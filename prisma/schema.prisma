@@ -1,0 +1,183 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Address {
+  id        String   @id
+  isDefault Boolean  @default(false)
+  userId    String
+  street    String
+  city      String
+  state     String
+  zip       String
+  country   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime
+  User      User     @relation(fields: [userId], references: [id])
+}
+
+model Cart {
+  id       String     @id
+  userId   String
+  User     User       @relation(fields: [userId], references: [id])
+  CartItem CartItem[]
+}
+
+model CartItem {
+  id         String   @id
+  cartId     String
+  fileId     String
+  materialId String
+  quantity   Int
+  price      Float
+  Cart       Cart     @relation(fields: [cartId], references: [id])
+  File       File     @relation(fields: [fileId], references: [id])
+  Material   Material @relation(fields: [materialId], references: [id])
+}
+
+model File {
+  id         String      @id
+  userId     String
+  filename   String
+  filepath   String
+  filetype   FileType
+  uploadedAt DateTime    @default(now())
+  CartItem   CartItem[]
+  User       User        @relation(fields: [userId], references: [id])
+  OrderItem  OrderItem[]
+}
+
+model Material {
+  id           String         @id
+  name         String         @unique
+  description  String?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime
+  CartItem     CartItem[]
+  MaterialType MaterialType[]
+  OrderItem    OrderItem[]
+}
+
+model MaterialType {
+  id           String   @id
+  width        Float
+  length       Float
+  height       Float
+  pricePerUnit Float
+  massPerUnit  Float
+  stock        Int      @default(0)
+  errorMargin  Float
+  materialId   String
+  Material     Material @relation(fields: [materialId], references: [id])
+}
+
+model Order {
+  id         String      @id
+  userId     String
+  status     OrderStatus @default(PENDING)
+  totalPrice Float
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime
+  User       User        @relation(fields: [userId], references: [id])
+  OrderItem  OrderItem[]
+  Payment    Payment[]
+  Shipment   Shipment[]
+}
+
+model OrderItem {
+  id           String         @id
+  orderId      String
+  fileId       String
+  materialId   String
+  quantity     Int
+  price        Float
+  File         File           @relation(fields: [fileId], references: [id])
+  Material     Material       @relation(fields: [materialId], references: [id])
+  Order        Order          @relation(fields: [orderId], references: [id])
+  ShipmentItem ShipmentItem[]
+}
+
+model Payment {
+  id            String        @id
+  orderId       String
+  paymentMethod String
+  status        PaymentStatus @default(PENDING)
+  amount        Float
+  paidAt        DateTime?
+  Order         Order         @relation(fields: [orderId], references: [id])
+}
+
+model Shipment {
+  id             String         @id
+  orderId        String
+  carrier        String
+  trackingNumber String?
+  status         ShipmentStatus @default(PENDING)
+  shippedAt      DateTime?
+  deliveredAt    DateTime?
+  Order          Order          @relation(fields: [orderId], references: [id])
+  ShipmentItem   ShipmentItem[]
+}
+
+model ShipmentItem {
+  id          String    @id
+  shipmentId  String
+  orderItemId String
+  quantity    Int
+  OrderItem   OrderItem @relation(fields: [orderItemId], references: [id])
+  Shipment    Shipment  @relation(fields: [shipmentId], references: [id])
+}
+
+model User {
+  id           String       @id
+  email        String       @unique
+  authProvider AuthProvider @default(LOCAL)
+  role         UserRole     @default(USER)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime
+  Address      Address[]
+  Cart         Cart[]
+  File         File[]
+  Order        Order[]
+}
+
+enum AuthProvider {
+  GOOGLE
+  FACEBOOK
+  LOCAL
+}
+
+enum FileType {
+  DXF
+  OTHER
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  SHIPPED
+  COMPLETED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+}
+
+enum ShipmentStatus {
+  PENDING
+  IN_TRANSIT
+  DELIVERED
+}
+
+enum UserRole {
+  USER
+  ADMIN
+}
