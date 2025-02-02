@@ -1,3 +1,9 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
 generator client {
   provider = "prisma-client-js"
 }
@@ -7,64 +13,60 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model User {
+  id           String     @id // Same as supabase uid
+  email        String     @unique
+  authProvider AuthProvider  @default(LOCAL)
+  role         UserRole   @default(USER)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  carts        Cart[]
+  orders       Order[]
+  files        File[]
+  addresses    Address[]
+}
+
 model Address {
-  id        String   @id
-  isDefault Boolean  @default(false)
-  userId    String
-  street    String
-  city      String
-  state     String
-  zip       String
-  country   String
-  createdAt DateTime @default(now())
-  updatedAt DateTime
-  User      User     @relation(fields: [userId], references: [id])
-}
+  id           String     @id @default(uuid())
+  isDefault    Boolean    @default(false)
+  userId       String
+  street       String
+  city         String
+  state        String
+  zip          String
+  country      String
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
 
-model Cart {
-  id       String     @id
-  userId   String
-  User     User       @relation(fields: [userId], references: [id])
-  CartItem CartItem[]
-}
-
-model CartItem {
-  id         String   @id
-  cartId     String
-  fileId     String
-  materialId String
-  quantity   Int
-  price      Float
-  Cart       Cart     @relation(fields: [cartId], references: [id])
-  File       File     @relation(fields: [fileId], references: [id])
-  Material   Material @relation(fields: [materialId], references: [id])
+  user User @relation(fields: [userId], references: [id])
 }
 
 model File {
-  id         String      @id
+  id         String     @id @default(uuid())
   userId     String
   filename   String
   filepath   String
   filetype   FileType
-  uploadedAt DateTime    @default(now())
-  CartItem   CartItem[]
-  User       User        @relation(fields: [userId], references: [id])
-  OrderItem  OrderItem[]
+  uploadedAt DateTime   @default(now())
+  cartItems  CartItem[]
+  orderItems OrderItem[]
+
+  user User @relation(fields: [userId], references: [id])
 }
 
 model Material {
-  id           String         @id
-  name         String         @unique
+  id           String   @id @default(uuid())
+  name         String   @unique
+  types        MaterialType[]
   description  String?
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime
-  CartItem     CartItem[]
-  MaterialType MaterialType[]
-  OrderItem    OrderItem[]
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  cartItems    CartItem[]
 }
 
 model MaterialType {
-  id           String   @id
+  id           String   @id @default(uuid())
   width        Float
   length       Float
   height       Float
@@ -73,83 +75,125 @@ model MaterialType {
   stock        Int      @default(0)
   errorMargin  Float
   materialId   String
-  Material     Material @relation(fields: [materialId], references: [id])
+  maxCutLength Float
+  minCutLength Float
+  maxCutWidth  Float
+  minCutWidth  Float
+
+  orderItems   OrderItem[]
+
+  material Material @relation(fields: [materialId], references: [id])
+}
+
+model Cart {
+  id      String     @id @default(uuid())
+  userId  String
+  items   CartItem[]
+
+  user User @relation(fields: [userId], references: [id])
+}
+
+model CartItem {
+  id         String   @id @default(uuid())
+  cartId     String
+  fileId     String
+  materialId String
+  quantity   Int
+  price      Float
+
+  cart     Cart     @relation(fields: [cartId], references: [id])
+  file     File     @relation(fields: [fileId], references: [id])
+  material Material @relation(fields: [materialId], references: [id])
 }
 
 model Order {
-  id         String      @id
-  userId     String
-  status     OrderStatus @default(PENDING)
+  id        String      @id @default(uuid())
+  userId    String
+  status    OrderStatus @default(PENDING)
   totalPrice Float
-  createdAt  DateTime    @default(now())
-  updatedAt  DateTime
-  User       User        @relation(fields: [userId], references: [id])
-  OrderItem  OrderItem[]
-  Payment    Payment[]
-  Shipment   Shipment[]
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  items     OrderItem[]
+  payments  Payment[]
+  shipments Shipment[]
+
+  user User @relation(fields: [userId], references: [id])
 }
 
 model OrderItem {
-  id           String         @id
-  orderId      String
-  fileId       String
-  materialId   String
-  quantity     Int
-  price        Float
-  File         File           @relation(fields: [fileId], references: [id])
-  Material     Material       @relation(fields: [materialId], references: [id])
-  Order        Order          @relation(fields: [orderId], references: [id])
-  ShipmentItem ShipmentItem[]
+  id         String   @id @default(uuid())
+  orderId    String
+  fileId     String
+  materialTypeId String
+  quantity   Int
+  price      Float
+  shipments  ShipmentItem[]
+
+  order    Order    @relation(fields: [orderId], references: [id])
+  file     File     @relation(fields: [fileId], references: [id])
+  materialType MaterialType @relation(fields: [materialTypeId], references: [id])
 }
 
 model Payment {
-  id            String        @id
-  orderId       String
+  id          String       @id @default(uuid())
+  orderId     String
   paymentMethod String
-  status        PaymentStatus @default(PENDING)
-  amount        Float
-  paidAt        DateTime?
-  Order         Order         @relation(fields: [orderId], references: [id])
+  status      PaymentStatus @default(PENDING)
+  amount      Float
+  paidAt      DateTime?
+
+  order Order @relation(fields: [orderId], references: [id])
 }
 
 model Shipment {
-  id             String         @id
-  orderId        String
+  id             String         @id @default(uuid())
+  orderId        String         
   carrier        String
   trackingNumber String?
   status         ShipmentStatus @default(PENDING)
   shippedAt      DateTime?
   deliveredAt    DateTime?
-  Order          Order          @relation(fields: [orderId], references: [id])
-  ShipmentItem   ShipmentItem[]
+  items          ShipmentItem[]
+
+  order Order @relation(fields: [orderId], references: [id])
 }
 
 model ShipmentItem {
-  id          String    @id
+  id          String   @id @default(uuid())
   shipmentId  String
-  orderItemId String
+  orderItemId String //array of order items
   quantity    Int
-  OrderItem   OrderItem @relation(fields: [orderItemId], references: [id])
-  Shipment    Shipment  @relation(fields: [shipmentId], references: [id])
+
+  shipment   Shipment   @relation(fields: [shipmentId], references: [id])
+  orderItem  OrderItem  @relation(fields: [orderItemId], references: [id])
 }
 
-model User {
-  id           String       @id
-  email        String       @unique
-  authProvider AuthProvider @default(LOCAL)
-  role         UserRole     @default(USER)
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime
-  Address      Address[]
-  Cart         Cart[]
-  File         File[]
-  Order        Order[]
+model MaterialTypeCut {
+  id           String   @id @default(uuid())
+  name         String
+  description  String?
+  materialTypeId String
+  width        Float
+  length       Float
+  height       Float
+  pricePerUnit Float
+  massPerUnit  Float
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 }
 
-enum AuthProvider {
-  GOOGLE
-  FACEBOOK
-  LOCAL
+model CutType {
+  id           String   @id @default(uuid())
+  name         String
+  description  String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+// Enums
+enum UserRole {
+  USER
+  ADMIN
 }
 
 enum FileType {
@@ -174,10 +218,12 @@ enum PaymentStatus {
 enum ShipmentStatus {
   PENDING
   IN_TRANSIT
+  DELAYED
   DELIVERED
 }
 
-enum UserRole {
-  USER
-  ADMIN
+enum AuthProvider {
+  GOOGLE
+  FACEBOOK
+  LOCAL
 }
