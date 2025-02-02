@@ -1,9 +1,9 @@
 'use client';
 
+import { useLogInMutation } from '@/hooks/auth/useLoginMutation';
 import { useForm, SubmitHandler } from 'react-hook-form';
-import { useSignUpMutation } from '@/hooks/auth/useSignUpMutation';
 
-type SignUpFormData = {
+type LogInFormData = {
 	email: string;
 	password: string;
 	repeatPassword: string;
@@ -14,9 +14,8 @@ export default function SignUpForm() {
 	const {
 		register,
 		handleSubmit,
-		watch,
 		formState: { errors },
-	} = useForm<SignUpFormData>();
+	} = useForm<LogInFormData>();
 
 	// 2. React Query mutation
 	const {
@@ -25,10 +24,12 @@ export default function SignUpForm() {
 		isError,
 		isSuccess,
 		error,
-	} = useSignUpMutation();
+		data,
+	} = useLogInMutation();
+	console.log(data);
 
 	// 3. onSubmit -> llama al custom hook
-	const onSubmit: SubmitHandler<SignUpFormData> = (formData) => {
+	const onSubmit: SubmitHandler<LogInFormData> = (formData) => {
 		signUp(formData);
 	};
 
@@ -60,39 +61,18 @@ export default function SignUpForm() {
 				)}
 			</div>
 
-			<div className='mb-4'>
-				<label>Repetir contraseña</label>
-				<input
-					type='password'
-					{...register('repeatPassword', {
-						required: 'Repite tu contraseña',
-						validate: (value) =>
-							value === watch('password') ||
-							'Las contraseñas no coinciden',
-					})}
-					className='border w-full p-2'
-				/>
-				{errors.repeatPassword && (
-					<p className='text-red-500'>
-						{errors.repeatPassword.message}
-					</p>
-				)}
-			</div>
-
 			<button
 				type='submit'
 				disabled={isPending}
 				className='bg-blue-600 text-white py-2 px-4 rounded'
 			>
-				{isPending ? 'Registrando...' : 'Registrarme'}
+				{isPending ? 'Iniciando sesion...' : 'Iniciar sesion'}
 			</button>
 
 			{isError && (
 				<p className='text-red-500 mt-2'>{(error as Error).message}</p>
 			)}
-			{isSuccess && (
-				<p className='text-green-600 mt-2'>Registro exitoso!</p>
-			)}
+			{isSuccess && <p className='text-green-600 mt-2'>LogIn exitoso!</p>}
 		</form>
 	);
 }

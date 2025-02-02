@@ -3,17 +3,14 @@
 import supabase from '@/lib/supabase';
 import { useMutation } from '@tanstack/react-query';
 
-// Define la forma de los datos que esperas del form
 type SignUpData = {
 	email: string;
 	password: string;
 };
 
-// Si devuelves algo en tu endpoint, puedes definir un tipo de respuesta
 type SignUpResponse = {
 	success?: boolean;
 	user?: string;
-	// etc.
 };
 
 async function signUpApiCall(data: SignUpData): Promise<SignUpResponse> {
