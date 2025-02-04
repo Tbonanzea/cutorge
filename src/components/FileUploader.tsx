@@ -1,34 +1,31 @@
 'use client';
+import { useUploadFileMutation } from '@/hooks/useUploadFileMutation';
 import { MAX_FILE_SIZE, MAX_FILES } from '@/utils/constants';
 import React, { useCallback } from 'react';
 import { FileRejection, useDropzone } from 'react-dropzone';
 
 function FileUploader() {
-	// Se ejecuta cuando los archivos han sido "aceptados".
-	const onDropAccepted = useCallback((acceptedFiles: File[]) => {
-		acceptedFiles.forEach(async (file: File) => {
-            // VALIDAR DXF BIEN FORMATEADO
-			// Aquí puedes subir el archivo al servidor, por ejemplo usando fetch o axios.
-			console.log('Archivo aceptado:', file);
-			// Ejemplo básico de subida con fetch:
-			/*
-      const formData = new FormData();
-      formData.append('file', file);
-      try {
-        const response = await fetch('/api/upload', {
-          method: 'POST',
-          body: formData,
-        });
-        if (!response.ok) {
-          throw new Error('Error al subir el archivo');
-        }
-        console.log('Archivo subido con éxito');
-      } catch (error) {
-        console.error('Ocurrió un error:', error);
-      }
-      */
-		});
-	}, []);
+	const {
+		mutateAsync: uploadFile,
+		isPending,
+		isError,
+		isSuccess,
+	} = useUploadFileMutation();
+
+	const onDropAccepted = useCallback(
+		(acceptedFiles: File[]) => {
+			acceptedFiles.forEach(async (file: File) => {
+				console.log('Archivo aceptado:', file);
+				try {
+					await uploadFile(file);
+					console.log('Archivo subido con éxito');
+				} catch (error) {
+					console.error(error);
+				}
+			});
+		},
+		[uploadFile]
+	);
 
 	// Se ejecuta cuando los archivos son rechazados (por formato o por tamaño).
 	const onDropRejected = useCallback((fileRejections: FileRejection[]) => {
@@ -40,6 +37,20 @@ function FileUploader() {
 		});
 	}, []);
 
+	const customValidator = useCallback((file: File) => {
+		// Validar que sea un dxf bien formateado
+
+		// Ejemplo de error personalizado
+		/*
+		return {
+			code: 'archivo-invalidado-por-nombre',
+			message: 'El archivo contiene la palabra "test" en su nombre.',
+		} as FileError;
+	   */
+
+		return null; // null significa que el archivo es válido
+	}, []);
+
 	const {
 		getRootProps,
 		getInputProps,
@@ -47,16 +58,15 @@ function FileUploader() {
 		acceptedFiles,
 		fileRejections,
 	} = useDropzone({
-		// Aceptamos únicamente archivos con extensión .dxf
 		accept: {
-			dxf: ['.dxf'],
+			'application/dxf': ['.dxf'], // Aceptamos únicamente archivos con extensión .dxf
 		},
-		// Tamaño máximo de archivo: 5 MB
-		maxSize: MAX_FILE_SIZE,
+		maxSize: MAX_FILE_SIZE, // Tamaño máximo de archivo: 5 MB
 		multiple: true,
 		maxFiles: MAX_FILES,
 		onDropAccepted,
 		onDropRejected,
+		validator: customValidator,
 	});
 
 	return (
