@@ -9,7 +9,7 @@ type LogInFormData = {
 	repeatPassword: string;
 };
 
-export default function SignUpForm() {
+export default function LogInForm() {
 	// 1. RHF para manejar inputs
 	const {
 		register,
@@ -19,18 +19,17 @@ export default function SignUpForm() {
 
 	// 2. React Query mutation
 	const {
-		mutate: signUp,
+		mutate: logIn,
 		isPending,
 		isError,
 		isSuccess,
 		error,
 		data,
 	} = useLogInMutation();
-	console.log(data);
 
 	// 3. onSubmit -> llama al custom hook
 	const onSubmit: SubmitHandler<LogInFormData> = (formData) => {
-		signUp(formData);
+		logIn(formData);
 	};
 
 	return (
@@ -72,7 +71,9 @@ export default function SignUpForm() {
 			{isError && (
 				<p className='text-red-500 mt-2'>{(error as Error).message}</p>
 			)}
-			{isSuccess && <p className='text-green-600 mt-2'>LogIn exitoso!</p>}
+			{isSuccess && (
+				<p className='text-green-600 mt-2'>{JSON.stringify(data)}</p>
+			)}
 		</form>
 	);
 }
