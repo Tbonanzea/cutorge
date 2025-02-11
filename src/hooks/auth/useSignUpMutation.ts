@@ -20,11 +20,6 @@ async function signUpApiCall(data: SignUpData): Promise<SignUpResponse> {
 	// 0. Verifica si el usuario ya existe en la base de datos
 	const exists = await getUserByEmail(data.email);
 
-	if (!exists.success || !exists.user) {
-		const errorResponse = exists.error;
-		throw new Error(errorResponse.error || 'Error al obtener usuario');
-	}
-
 	if (exists.success) {
 		throw new Error('Ya existe un usuario con ese email');
 	}
