@@ -30,7 +30,7 @@ export async function getPaginatedUsers(page = 1, limit = 10) {
 	};
 }
 
-// 🟢 Server Action para obtener un usuario por email
+// Server Action para obtener un usuario por email
 export async function getUserByEmail(email: string) {
 	try {
 		if (!email) {
@@ -52,7 +52,7 @@ export async function getUserByEmail(email: string) {
 	}
 }
 
-// 🟢 Server Action para crear un usuario
+// Server Action para crear un usuario
 export async function createUser(id: string, email: string) {
 	try {
 		if (!id || !email) {

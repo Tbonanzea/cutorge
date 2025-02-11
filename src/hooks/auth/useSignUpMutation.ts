@@ -33,7 +33,7 @@ async function signUpApiCall(data: SignUpData): Promise<SignUpResponse> {
 	const supabaseResponse = await signup(data);
 
 	// 2. Verifica que el user venga en la respuesta
-	const supabaseUser = supabaseResponse.user;
+	const supabaseUser = supabaseResponse.data.user;
 	if (!supabaseUser) throw new Error('No se recibió el usuario');
 
 	// 3. Crea el usuario en tu tabla local (Prisma)
