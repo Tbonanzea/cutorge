@@ -2,11 +2,16 @@
 
 import { SignUpData } from '@/hooks/auth/useSignUpMutation';
 import { createClient } from '@/lib/supabase/server';
+import { redirect } from 'next/navigation';
 
 export async function signup(formData: SignUpData) {
 	const supabase = await createClient();
 
-	const response = await supabase.auth.signUp(formData);
+	const { data, error } = await supabase.auth.signUp(formData);
 
-	return response;
+	if (error) {
+		redirect(`/error?error=${error.message}`);
+	}
+
+	return data;
 }

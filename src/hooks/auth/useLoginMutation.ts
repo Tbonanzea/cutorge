@@ -20,8 +20,7 @@ async function logInApiCall(data: LogInData): Promise<LogInResponse> {
 	// 1. Se loguea en Supabase Auth
 	const supabaseResponse = await login(data);
 
-	const supabaseUser =
-		supabaseResponse.data.user || supabaseResponse.error || null;
+	const supabaseUser = supabaseResponse.user || supabaseResponse.session.user;
 	if (!supabaseUser) throw new Error('No se recibió el usuario');
 
 	// 3. Trae el usuario de tu tabla local (Prisma)
