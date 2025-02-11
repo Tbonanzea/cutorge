@@ -4,7 +4,7 @@ import { createUser, getUserByEmail } from '@/app/(dashboard)/users/actions';
 import { signup } from '@/app/auth/signup/actions';
 import { useMutation } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
-import { User } from 'types';
+import { User } from '@/types';
 
 export type SignUpData = {
 	email: string;

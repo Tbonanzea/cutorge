@@ -4,7 +4,7 @@ import { getUserByEmail } from '@/app/(dashboard)/users/actions';
 import { login } from '@/app/auth/login/actions';
 import { useMutation } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
-import { User } from 'types';
+import { User } from '@/types';
 
 export type LogInData = {
 	email: string;
