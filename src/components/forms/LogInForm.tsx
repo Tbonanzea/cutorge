@@ -68,6 +68,10 @@ export default function LogInForm() {
 				{isPending ? 'Iniciando sesion...' : 'Iniciar sesion'}
 			</button>
 
+			<p className='mt-2'>
+				<a href='/auth/password/forgot'>Olvidaste tu contraseña?</a>
+			</p>
+
 			{isError && (
 				<p className='text-red-500 mt-2'>{(error as Error).message}</p>
 			)}

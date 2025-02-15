@@ -1,5 +1,5 @@
 import LogInForm from '@/components/forms/LogInForm';
 
-export default function LogInPage(params) {
+export default function LogInPage() {
 	return <LogInForm />;
 }
