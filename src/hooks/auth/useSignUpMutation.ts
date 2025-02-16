@@ -3,7 +3,6 @@
 import { createUser, getUserByEmail } from '@/app/(dashboard)/users/actions';
 import { signup } from '@/app/auth/signup/actions';
 import { useMutation } from '@tanstack/react-query';
-import { useRouter } from 'next/navigation';
 import { User } from '@/types';
 
 export type SignUpData = {
@@ -32,7 +31,10 @@ async function signUpApiCall(data: SignUpData): Promise<SignUpResponse> {
 	if (!supabaseUser) throw new Error('No se recibió el usuario');
 
 	// 3. Crea el usuario en tu tabla local (Prisma)
-	const response = await createUser(supabaseUser.id, data.email);
+	const response = await createUser({
+		id: supabaseUser.id,
+		email: data.email,
+	});
 
 	if (!response.success || !response.user) {
 		const errorResponse = response.error;
@@ -43,9 +45,7 @@ async function signUpApiCall(data: SignUpData): Promise<SignUpResponse> {
 }
 
 export function useSignUpMutation() {
-	const router = useRouter();
 	return useMutation({
 		mutationFn: (formData: SignUpData) => signUpApiCall(formData),
-		onSuccess: () => router.push('/'),
 	});
 }

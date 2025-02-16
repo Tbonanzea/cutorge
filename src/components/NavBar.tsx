@@ -1,3 +1,4 @@
+import { signOut } from '@/app/auth/signup/actions';
 import Link from 'next/link';
 
 export default function NavBar() {
@@ -12,6 +13,13 @@ export default function NavBar() {
 					<Link href='/quoting'>Cotizador</Link>
 					{' | '}
 					<Link href='/about'>Acerca de</Link>
+					{' | '}
+					<button
+						className='bg-blue-700 text-white p-2 rounded'
+						onClick={signOut}
+					>
+						Cerrar sesión
+					</button>
 				</div>
 			</nav>
 		</header>

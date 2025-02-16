@@ -1,6 +1,7 @@
 'use client';
 
 import { useLogInMutation } from '@/hooks/auth/useLoginMutation';
+import Link from 'next/link';
 import { useForm, SubmitHandler } from 'react-hook-form';
 
 type LogInFormData = {
@@ -67,6 +68,8 @@ export default function LogInForm() {
 			>
 				{isPending ? 'Iniciando sesion...' : 'Iniciar sesion'}
 			</button>
+
+			<Link href='/auth/signup'> No tienes cuenta? Registrate</Link>
 
 			<p className='mt-2'>
 				<a href='/auth/password/forgot'>Olvidaste tu contraseña?</a>

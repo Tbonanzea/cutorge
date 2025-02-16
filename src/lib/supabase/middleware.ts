@@ -3,10 +3,12 @@ import { NextResponse, type NextRequest } from 'next/server';
 
 const publicRoutes = [
 	'/',
+	'/error',
 	'/auth/login',
 	'/auth/signup',
 	'/auth/password/forgot',
 	'/auth/confirm',
+	'/auth/callback',
 ];
 
 export async function updateSession(request: NextRequest) {
