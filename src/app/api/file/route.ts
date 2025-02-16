@@ -9,8 +9,6 @@ import {
 } from '@aws-sdk/client-s3';
 import { Readable } from 'stream';
 
-console.log('AWS_REGION es:', JSON.stringify(process.env.AWS_REGION));
-
 const s3Client = new S3Client({
 	region: process.env.AWS_REGION,
 	credentials: {

@@ -1,6 +1,10 @@
 'use server';
 
 import prisma from '@/lib/prisma';
+import { User } from '@prisma/client';
+
+type CreateUserInput = Pick<User, 'id' | 'email'> &
+	Partial<Omit<User, 'id' | 'email'>>;
 
 /**
  * Retorna usuarios de forma paginada.
@@ -52,22 +56,44 @@ export async function getUserByEmail(email: string) {
 }
 
 // Server Action para crear un usuario
-export async function createUser(id: string, email: string) {
+export async function createUser(newUser: CreateUserInput) {
 	try {
-		if (!id || !email) {
+		if (!newUser.id || !newUser.email) {
 			throw new Error('ID and email are required');
 		}
 
 		const user = await prisma.user.create({
-			data: {
-				id,
-				email,
-			},
+			data: newUser,
 		});
+
+		if (!user) {
+			throw new Error('User not found');
+		}
 
 		return { success: true, user };
 	} catch (error: any) {
-		console.error(error);
+		return { success: false, error: error.message };
+	}
+}
+
+// Server Action para actualizar un usuario
+export async function updateUser(id: string, updatedUser: Partial<User>) {
+	try {
+		if (!id) {
+			throw new Error('ID is required');
+		}
+
+		const user = await prisma.user.update({
+			where: { id },
+			data: updatedUser,
+		});
+
+		if (!user) {
+			throw new Error('User not found');
+		}
+
+		return { success: true, user };
+	} catch (error: any) {
 		return { success: false, error: error.message };
 	}
 }

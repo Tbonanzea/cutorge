@@ -2,6 +2,7 @@
 
 import { useForm, SubmitHandler } from 'react-hook-form';
 import { useSignUpMutation } from '@/hooks/auth/useSignUpMutation';
+import { signInWithGoogle } from '@/app/auth/signup/actions';
 
 type SignUpFormData = {
 	email: string;
@@ -30,6 +31,10 @@ export default function SignUpForm() {
 	// 3. onSubmit -> llama al custom hook
 	const onSubmit: SubmitHandler<SignUpFormData> = (formData) => {
 		signUp(formData);
+	};
+
+	const onGoogleClick = () => {
+		signInWithGoogle();
 	};
 
 	return (
@@ -91,8 +96,18 @@ export default function SignUpForm() {
 				<p className='text-red-500 mt-2'>{(error as Error).message}</p>
 			)}
 			{isSuccess && (
-				<p className='text-green-600 mt-2'>Registro exitoso!</p>
+				<p className='text-green-600 mt-2'>
+					Registro exitoso! Verifica tu email para poder loguearte
+				</p>
 			)}
+
+			<button
+				type='button'
+				onClick={onGoogleClick}
+				className='bg-white text-black py-2 px-4 rounded mt-4'
+			>
+				Google
+			</button>
 		</form>
 	);
 }
