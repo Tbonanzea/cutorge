@@ -23,7 +23,13 @@ export default function NewPasswordForm({
 	} = useForm<NewPasswordFormData>();
 
 	// 2. React Query mutation
-	const { mutate: newPassword, isPending } = useNewPasswordMutation();
+	const {
+		mutate: newPassword,
+		isPending,
+		isError,
+		isSuccess,
+		error,
+	} = useNewPasswordMutation();
 
 	// 3. onSubmit -> llama al custom hook
 	const onSubmit: SubmitHandler<NewPasswordFormData> = (formData) => {
@@ -65,8 +71,6 @@ export default function NewPasswordForm({
 				)}
 			</div>
 
-			{isPending && <LoadingSpinner />}
-
 			<button
 				type='submit'
 				disabled={isPending}
@@ -74,6 +78,12 @@ export default function NewPasswordForm({
 			>
 				Cambiar contraseña
 			</button>
+
+			{isPending && <LoadingSpinner />}
+			{isError && <p className='text-red-500'>{error.message}</p>}
+			{isSuccess && (
+				<p className='text-green-500'>Contraseña cambiada con exito</p>
+			)}
 		</form>
 	);
 }

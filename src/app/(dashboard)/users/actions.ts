@@ -77,14 +77,14 @@ export async function createUser(newUser: CreateUserInput) {
 }
 
 // Server Action para actualizar un usuario
-export async function updateUser(id: string, updatedUser: Partial<User>) {
+export async function updateUser(email: string, updatedUser: Partial<User>) {
 	try {
-		if (!id) {
-			throw new Error('ID is required');
+		if (!email) {
+			throw new Error('Email is required');
 		}
 
 		const user = await prisma.user.update({
-			where: { id },
+			where: { email },
 			data: updatedUser,
 		});
 

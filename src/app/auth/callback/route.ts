@@ -16,9 +16,16 @@ export async function GET(request: Request) {
 		const { data, error } = await supabase.auth.exchangeCodeForSession(
 			code
 		);
-		const authProvider = data.user?.app_metadata.provider;
 
 		if (!error && data.user.email) {
+			const authProviders = data.user.app_metadata.providers
+				.map((provider: string) => provider.toUpperCase())
+				.filter((provider: AuthProvider) =>
+					Object.values(AuthProvider).includes(
+						provider as AuthProvider
+					)
+				) as AuthProvider[];
+
 			// if user doesn't exist, create
 			const existingUser = await prisma.user.findUnique({
 				where: { email: data.user.email },
@@ -27,9 +34,7 @@ export async function GET(request: Request) {
 				const { error } = await createUser({
 					id: data.user.id,
 					email: data.user.email,
-					...(authProvider && {
-						authProviders: [authProvider as AuthProvider],
-					}),
+					authProviders: authProviders as AuthProvider[],
 				});
 
 				if (error) {
@@ -39,18 +44,25 @@ export async function GET(request: Request) {
 					);
 				}
 			} else {
-				// update authProviders if not already set without eliminating existing ones
-				if (
-					!existingUser.authProviders.includes(
-						authProvider as AuthProvider
-					)
-				) {
-					await updateUser(existingUser.id, {
+				// if there are new auth providers, update the user
+				const newProviders = authProviders.filter(
+					(provider) => !existingUser.authProviders.includes(provider)
+				);
+
+				if (newProviders.length > 0) {
+					const { error } = await updateUser(existingUser.email, {
 						authProviders: [
 							...existingUser.authProviders,
-							authProvider as AuthProvider,
+							...newProviders,
 						],
 					});
+
+					if (error) {
+						await supabase.auth.signOut();
+						return NextResponse.redirect(
+							`${origin}/error?error=${error}`
+						);
+					}
 				}
 			}
 

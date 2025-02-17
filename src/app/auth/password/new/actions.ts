@@ -15,7 +15,7 @@ export async function newPassword({
 	});
 
 	if (error) {
-		redirect(`/error?error=${error.message}`);
+		throw new Error(error.message);
 	}
 
 	if (data.user && emailRedirectTo) {

@@ -1,9 +1,6 @@
 'use server';
 
-import {
-	createUser,
-	getUserByEmail,
-} from '@/app/(dashboard)/users/actions';
+import { createUser, getUserByEmail } from '@/app/(dashboard)/users/actions';
 import { SignUpData } from '@/hooks/auth/useSignUpMutation';
 import { createClient } from '@/lib/supabase/server';
 import { AuthProvider } from '@prisma/client';
@@ -14,7 +11,7 @@ export async function signup(formData: SignUpData) {
 	const { user } = await getUserByEmail(formData.email);
 	if (user) {
 		const isLocalAuthProvider = user.authProviders.includes(
-			AuthProvider.local
+			AuthProvider.EMAIL
 		);
 
 		throw new Error(
@@ -30,7 +27,7 @@ export async function signup(formData: SignUpData) {
 	const { data, error } = await supabase.auth.signUp({
 		...formData,
 		options: {
-			emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/login`,
+			emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/error`,
 		},
 	});
 
@@ -45,7 +42,7 @@ export async function signup(formData: SignUpData) {
 	const newUserResponse = await createUser({
 		id: data?.user?.id,
 		email: formData.email,
-		authProviders: [AuthProvider.local],
+		authProviders: [AuthProvider.EMAIL],
 	});
 
 	return newUserResponse;

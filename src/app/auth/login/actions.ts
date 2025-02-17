@@ -24,9 +24,9 @@ export async function login(formData: LogInData) {
 		}
 
 		// Append message if user is not local
-		if (!user?.authProviders.includes(AuthProvider.local)) {
+		if (!user?.authProviders.includes(AuthProvider.EMAIL)) {
 			appendMessage = `Tu usuario fue creado con ${user?.authProviders.filter(
-				(provider) => provider !== AuthProvider.local
+				(provider) => provider !== AuthProvider.EMAIL
 			)}, por favor inicia sesion con alguno de estos metodos.`;
 		}
 

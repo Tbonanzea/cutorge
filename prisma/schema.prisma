@@ -16,7 +16,7 @@ datasource db {
 model User {
   id           String     @id // Same as supabase uid
   email        String     @unique
-  authProviders AuthProvider[] @default([local]) // Array of enums
+  authProviders AuthProvider[] @default([EMAIL]) // Array of enums
   firstName    String?
   lastName     String?
   role         UserRole   @default(USER)
@@ -225,7 +225,7 @@ enum ShipmentStatus {
 }
 
 enum AuthProvider {
-  google
-  facebook
-  local
+  GOOGLE
+  FACEBOOK
+  EMAIL
 }

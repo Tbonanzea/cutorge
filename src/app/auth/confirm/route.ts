@@ -28,6 +28,10 @@ export async function GET(request: NextRequest) {
 	}
 
 	// return the user to an error page with some instructions
-	redirectTo.pathname = `/error?error=Redirecting to ${next} failed`;
+	redirectTo.pathname = '/error';
+	redirectTo.searchParams.set(
+		'error',
+		`Redirecting to ${next} failed. Probablemente el enlace ha expirado.`
+	);
 	return NextResponse.redirect(redirectTo);
 }
