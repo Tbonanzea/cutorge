@@ -1,8 +1,8 @@
 'use client';
 
 import { signup } from '@/app/auth/actions';
+import { User } from '@prisma/client';
 import { useMutation } from '@tanstack/react-query';
-import { User } from '@/types';
 
 export type SignUpData = {
 	email: string;
