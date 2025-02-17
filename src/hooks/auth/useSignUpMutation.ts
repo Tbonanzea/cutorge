@@ -1,6 +1,6 @@
 'use client';
 
-import { signup } from '@/app/auth/signup/actions';
+import { signup } from '@/app/auth/actions';
 import { useMutation } from '@tanstack/react-query';
 import { User } from '@/types';
 

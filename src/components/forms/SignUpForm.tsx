@@ -2,7 +2,7 @@
 
 import { useForm, SubmitHandler } from 'react-hook-form';
 import { useSignUpMutation } from '@/hooks/auth/useSignUpMutation';
-import { signInWithGoogle } from '@/app/auth/signup/actions';
+import { signInWithGoogle } from '@/app/auth/actions';
 
 type SignUpFormData = {
 	email: string;

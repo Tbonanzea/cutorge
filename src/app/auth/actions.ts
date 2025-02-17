@@ -2,6 +2,9 @@
 
 import { createUser, getUserByEmail } from '@/app/(dashboard)/users/actions';
 import { SignUpData } from '@/hooks/auth/useSignUpMutation';
+import { NewPasswordData } from '@/hooks/auth/useNewPasswordMutation';
+import { LogInData } from '@/hooks/auth/useLoginMutation';
+import prisma from '@/lib/prisma';
 import { createClient } from '@/lib/supabase/server';
 import { AuthProvider } from '@prisma/client';
 import { Provider } from '@supabase/supabase-js';
@@ -75,3 +78,65 @@ export const signOut = async () => {
 	const supabase = await createClient();
 	await supabase.auth.signOut();
 };
+
+export async function newPassword({
+	newPassword,
+	emailRedirectTo,
+}: NewPasswordData) {
+	const supabase = await createClient();
+
+	const { data, error } = await supabase.auth.updateUser({
+		password: newPassword,
+	});
+
+	if (error) {
+		throw new Error(error.message);
+	}
+
+	if (data.user && emailRedirectTo) {
+		redirect(emailRedirectTo);
+	}
+
+	return data;
+}
+
+export async function login(formData: LogInData) {
+	const supabase = await createClient();
+
+	const { data, error } = await supabase.auth.signInWithPassword(formData);
+
+	if (error) {
+		// Check is user is social login in prisma
+		let appendMessage = '';
+		const user = await prisma.user.findUnique({
+			where: {
+				email: formData.email,
+			},
+		});
+
+		if (!user) {
+			throw new Error('Usuario no existe.');
+		}
+
+		// Append message if user is not local
+		if (!user?.authProviders.includes(AuthProvider.EMAIL)) {
+			appendMessage = `Tu usuario fue creado con ${user?.authProviders.filter(
+				(provider) => provider !== AuthProvider.EMAIL
+			)}, por favor inicia sesion con alguno de estos metodos.`;
+		}
+
+		throw new Error(`Inicio de sesion invalido. ${appendMessage}`);
+	}
+
+	return data;
+}
+
+export async function requestResetPassword(email: string) {
+	const supabase = await createClient();
+
+	const { data } = await supabase.auth.resetPasswordForEmail(email, {
+		redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/quoting`,
+	});
+
+	return data;
+}

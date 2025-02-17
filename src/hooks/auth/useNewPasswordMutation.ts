@@ -1,6 +1,6 @@
 'use client';
 
-import { newPassword } from '@/app/auth/password/new/actions';
+import { newPassword } from '@/app/auth/actions';
 import { useMutation } from '@tanstack/react-query';
 
 export type NewPasswordData = {

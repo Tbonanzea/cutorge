@@ -1,4 +1,4 @@
-import { signOut } from '@/app/auth/signup/actions';
+import { signOut } from '@/app/auth/actions';
 import Link from 'next/link';
 
 export default function NavBar() {
