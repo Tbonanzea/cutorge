@@ -1,44 +1,27 @@
-import Table from '@/components/Table';
+// page.tsx
 import { getPaginatedUsers } from '@/app/(dashboard)/users/actions';
+import { columns } from './columns';
+import { DataTable } from './data-table';
 
-/**
- * Este componente se renderiza en el servidor (Server Component).
- * Llama directamente a la Server Action.
- */
 export default async function UsersPage({
 	searchParams,
 }: {
 	searchParams?: { page?: string };
 }) {
-	// Tomamos la página desde query (por ejemplo, /users?page=2)
-	const page = parseInt(searchParams?.page || '1', 10);
+	const params = await searchParams;
+	const page = parseInt(params?.page || '1', 10);
 	const limit = 10;
 
-	// Llamamos a la Server Action
-	const { users, total, totalPages } = await getPaginatedUsers(page, limit);
-
-	// Definimos las columnas de la tabla
-	const columns = [
-		{
-			accessorKey: 'id',
-			header: 'ID',
-		},
-		{
-			accessorKey: 'name',
-			header: 'Nombre',
-		},
-		{
-			accessorKey: 'email',
-			header: 'Email',
-		},
-	];
+	const { users, totalPages } = await getPaginatedUsers(page, limit);
 
 	return (
-		<Table
-			columns={columns}
-			data={users}
-			enablePagination
-			initialPageSize={limit}
-		/>
+		<div className='container mx-auto py-10'>
+			<DataTable
+				columns={columns}
+				data={users}
+				currentPage={page}
+				totalPages={totalPages}
+			/>
+		</div>
 	);
 }

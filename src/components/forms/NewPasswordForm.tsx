@@ -1,28 +1,48 @@
 'use client';
 
+import { Button } from '@/components/ui/button';
+import {
+	Form,
+	FormControl,
+	FormField,
+	FormItem,
+	FormLabel,
+	FormMessage,
+} from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
 import { useNewPasswordMutation } from '@/hooks/auth/useNewPasswordMutation';
-import { useForm, SubmitHandler } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useForm } from 'react-hook-form';
+import { z } from 'zod';
 import LoadingSpinner from '../LoadingSpinner';
 
-type NewPasswordFormData = {
-	newPassword: string;
-	repeatPassword: string;
-};
+const formSchema = z
+	.object({
+		newPassword: z
+			.string()
+			.min(6, {
+				message: 'La contraseña debe tener al menos 6 caracteres',
+			}),
+		repeatPassword: z.string(),
+	})
+	.refine((data) => data.newPassword === data.repeatPassword, {
+		message: 'Las contraseñas no coinciden',
+		path: ['repeatPassword'],
+	});
 
 export default function NewPasswordForm({
 	emailRedirectTo,
 }: {
 	emailRedirectTo: string;
 }) {
-	// 1. RHF para manejar inputs
-	const {
-		watch,
-		register,
-		handleSubmit,
-		formState: { errors },
-	} = useForm<NewPasswordFormData>();
+	const form = useForm<z.infer<typeof formSchema>>({
+		resolver: zodResolver(formSchema),
+		defaultValues: {
+			newPassword: '',
+			repeatPassword: '',
+		},
+	});
 
-	// 2. React Query mutation
 	const {
 		mutate: newPassword,
 		isPending,
@@ -31,59 +51,66 @@ export default function NewPasswordForm({
 		error,
 	} = useNewPasswordMutation();
 
-	// 3. onSubmit -> llama al custom hook
-	const onSubmit: SubmitHandler<NewPasswordFormData> = (formData) => {
-		newPassword({ newPassword: formData.newPassword, emailRedirectTo });
+	const onSubmit = (data: z.infer<typeof formSchema>) => {
+		newPassword({ newPassword: data.newPassword, emailRedirectTo });
 	};
 
 	return (
-		<form onSubmit={handleSubmit(onSubmit)} className='max-w-sm'>
-			<div className='mb-4'>
-				<label>Nueva contraseña</label>
-				<input
-					type='password'
-					{...register('newPassword', {
-						required: 'Ingresa tu contraseña',
-					})}
-					className='border w-full p-2'
+		<Form {...form}>
+			<form
+				onSubmit={form.handleSubmit(onSubmit)}
+				className='space-y-4 max-w-sm'
+			>
+				<FormField
+					control={form.control}
+					name='newPassword'
+					render={({ field }) => (
+						<FormItem>
+							<FormLabel>Nueva contraseña</FormLabel>
+							<FormControl>
+								<Input
+									type='password'
+									placeholder='••••••'
+									{...field}
+								/>
+							</FormControl>
+							<FormMessage />
+						</FormItem>
+					)}
 				/>
-				{errors.newPassword && (
-					<p className='text-red-500'>{errors.newPassword.message}</p>
-				)}
-			</div>
 
-			<div className='mb-4'>
-				<label>Repetir nueva contraseña</label>
-				<input
-					type='password'
-					{...register('repeatPassword', {
-						required: 'Repite tu contraseña',
-						validate: (value) =>
-							value === watch('newPassword') ||
-							'Las contraseñas no coinciden',
-					})}
-					className='border w-full p-2'
+				<FormField
+					control={form.control}
+					name='repeatPassword'
+					render={({ field }) => (
+						<FormItem>
+							<FormLabel>Repetir nueva contraseña</FormLabel>
+							<FormControl>
+								<Input
+									type='password'
+									placeholder='••••••'
+									{...field}
+								/>
+							</FormControl>
+							<FormMessage />
+						</FormItem>
+					)}
 				/>
-				{errors.repeatPassword && (
-					<p className='text-red-500'>
-						{errors.repeatPassword.message}
+
+				<Button type='submit' disabled={isPending} className='w-full'>
+					{isPending ? 'Cambiando...' : 'Cambiar contraseña'}
+				</Button>
+
+				{isPending && <LoadingSpinner />}
+				{isError && (
+					<p className='text-red-500'>{(error as Error).message}</p>
+				)}
+				{isSuccess && (
+					<p className='text-green-600'>
+						¡Contraseña cambiada con éxito!
 					</p>
 				)}
-			</div>
-
-			<button
-				type='submit'
-				disabled={isPending}
-				className='bg-blue-500 text-white p-2 rounded'
-			>
-				Cambiar contraseña
-			</button>
-
-			{isPending && <LoadingSpinner />}
-			{isError && <p className='text-red-500'>{error.message}</p>}
-			{isSuccess && (
-				<p className='text-green-500'>Contraseña cambiada con exito</p>
-			)}
-		</form>
+			</form>
+		</Form>
 	);
 }

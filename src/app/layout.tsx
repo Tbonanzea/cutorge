@@ -1,7 +1,7 @@
+import Footer from '@/components/Footer';
+import Header from '@/components/Header';
 import '@/styles/globals.css';
 import { ReactNode } from 'react';
-import Header from '@/components/Header';
-import Footer from '@/components/Footer';
 import { Providers } from './providers';
 
 // (Opcional) Define metadata para el <head>
@@ -16,7 +16,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
 			<body className='min-h-screen flex flex-col'>
 				<Providers>
 					<Header />
-					<main className='flex-grow'>{children}</main>
+					<main className='flex-1 flex flex-col'>{children}</main>
 					<Footer />
 				</Providers>
 			</body>

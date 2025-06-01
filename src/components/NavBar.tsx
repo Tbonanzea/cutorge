@@ -1,27 +1,60 @@
 import { signOut } from '@/app/auth/actions';
-import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+import {
+	NavigationMenu,
+	NavigationMenuItem,
+	NavigationMenuLink,
+	NavigationMenuList,
+} from '@/components/ui/navigation-menu';
+import { SquareUser } from 'lucide-react';
+import { ThemeToggle } from './ThemeToggle';
 
 export default function NavBar() {
 	return (
-		<header className='w-full bg-blue-500 p-4 text-white'>
-			<nav className='flex'>
-				<h1 className='text-2xl font-bold object-left'>CutForge</h1>
-				<div className='flex-grow'></div>
-				<div className='flex gap-4'>
-					<Link href='/'>Inicio</Link>
-					{' | '}
-					<Link href='/quoting'>Cotizador</Link>
-					{' | '}
-					<Link href='/about'>Acerca de</Link>
-					{' | '}
-					<button
-						className='bg-blue-700 text-white p-2 rounded'
-						onClick={signOut}
-					>
-						Cerrar sesión
-					</button>
-				</div>
-			</nav>
-		</header>
+		<nav className='w-full flex items-center justify-between h-16 px-4 border-b bg-background'>
+			{/* Brand */}
+			<span className='font-bold text-xl'>CutForge</span>
+			{/* Navigation Links */}
+			<div className='flex items-center gap-4'>
+				<NavigationMenu>
+					<NavigationMenuList>
+						<NavigationMenuItem>
+							<NavigationMenuLink
+								className='px-3 py-2 font-medium text-sm'
+								href='/'
+							>
+								Inicio
+							</NavigationMenuLink>
+						</NavigationMenuItem>
+						<NavigationMenuItem>
+							<NavigationMenuLink
+								className='px-3 py-2 font-medium text-sm'
+								href='/quoting'
+							>
+								Cotizador
+							</NavigationMenuLink>
+						</NavigationMenuItem>
+						<NavigationMenuItem>
+							<NavigationMenuLink
+								className='px-3 py-2 font-medium text-sm'
+								href='/about'
+							>
+								Acerca de
+							</NavigationMenuLink>
+						</NavigationMenuItem>
+						<NavigationMenuItem>
+							{/* Logout */}
+							<Button variant='outline' onClick={signOut}>
+								<SquareUser />
+								Cerrar sesión
+							</Button>
+						</NavigationMenuItem>
+						<NavigationMenuItem>
+							<ThemeToggle />
+						</NavigationMenuItem>
+					</NavigationMenuList>
+				</NavigationMenu>
+			</div>
+		</nav>
 	);
 }

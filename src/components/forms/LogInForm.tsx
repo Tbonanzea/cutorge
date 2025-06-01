@@ -1,24 +1,40 @@
 'use client';
 
 import { useLogInMutation } from '@/hooks/auth/useLoginMutation';
+import { zodResolver } from '@hookform/resolvers/zod';
 import Link from 'next/link';
-import { useForm, SubmitHandler } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
+import { z } from 'zod';
 
-type LogInFormData = {
-	email: string;
-	password: string;
-	repeatPassword: string;
-};
+import { Button } from '@/components/ui/button';
+import {
+	Form,
+	FormControl,
+	FormField,
+	FormItem,
+	FormLabel,
+	FormMessage,
+} from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+
+const loginSchema = z.object({
+	email: z.string().email('Ingresa un email válido'),
+	password: z
+		.string()
+		.min(6, 'La contraseña debe tener al menos 6 caracteres'),
+});
+
+type LoginFormData = z.infer<typeof loginSchema>;
 
 export default function LogInForm() {
-	// 1. RHF para manejar inputs
-	const {
-		register,
-		handleSubmit,
-		formState: { errors },
-	} = useForm<LogInFormData>();
+	const form = useForm<LoginFormData>({
+		resolver: zodResolver(loginSchema),
+		defaultValues: {
+			email: '',
+			password: '',
+		},
+	});
 
-	// 2. React Query mutation
 	const {
 		mutate: logIn,
 		isPending,
@@ -28,59 +44,78 @@ export default function LogInForm() {
 		data,
 	} = useLogInMutation();
 
-	// 3. onSubmit -> llama al custom hook
-	const onSubmit: SubmitHandler<LogInFormData> = (formData) => {
+	const onSubmit = (formData: LoginFormData) => {
 		logIn(formData);
 	};
 
 	return (
-		<form onSubmit={handleSubmit(onSubmit)} className='max-w-sm'>
-			<div className='mb-4'>
-				<label>Email</label>
-				<input
-					type='email'
-					{...register('email', { required: 'Ingresa tu email' })}
-					className='border w-full p-2'
-				/>
-				{errors.email && (
-					<p className='text-red-500'>{errors.email.message}</p>
-				)}
-			</div>
-
-			<div className='mb-4'>
-				<label>Contraseña</label>
-				<input
-					type='password'
-					{...register('password', {
-						required: 'Ingresa tu contraseña',
-					})}
-					className='border w-full p-2'
-				/>
-				{errors.password && (
-					<p className='text-red-500'>{errors.password.message}</p>
-				)}
-			</div>
-
-			<button
-				type='submit'
-				disabled={isPending}
-				className='bg-blue-600 text-white py-2 px-4 rounded'
+		<Form {...form}>
+			<form
+				onSubmit={form.handleSubmit(onSubmit)}
+				className='space-y-4 max-w-sm'
 			>
-				{isPending ? 'Iniciando sesion...' : 'Iniciar sesion'}
-			</button>
+				<FormField
+					control={form.control}
+					name='email'
+					render={({ field }) => (
+						<FormItem>
+							<FormLabel>Email</FormLabel>
+							<FormControl>
+								<Input
+									placeholder='tuemail@ejemplo.com'
+									{...field}
+								/>
+							</FormControl>
+							<FormMessage />
+						</FormItem>
+					)}
+				/>
 
-			<Link href='/auth/signup'> No tienes cuenta? Registrate</Link>
+				<FormField
+					control={form.control}
+					name='password'
+					render={({ field }) => (
+						<FormItem>
+							<FormLabel>Contraseña</FormLabel>
+							<FormControl>
+								<Input
+									type='password'
+									placeholder='••••••••'
+									{...field}
+								/>
+							</FormControl>
+							<FormMessage />
+						</FormItem>
+					)}
+				/>
 
-			<p className='mt-2'>
-				<a href='/auth/password/forgot'>Olvidaste tu contraseña?</a>
-			</p>
+				<Button type='submit' disabled={isPending}>
+					{isPending ? 'Iniciando sesión...' : 'Iniciar sesión'}
+				</Button>
 
-			{isError && (
-				<p className='text-red-500 mt-2'>{(error as Error).message}</p>
-			)}
-			{isSuccess && (
-				<p className='text-green-600 mt-2'>{JSON.stringify(data)}</p>
-			)}
-		</form>
+				<div className='text-sm mt-2'>
+					<Link href='/auth/signup' className='underline'>
+						¿No tienes cuenta? Regístrate
+					</Link>
+				</div>
+
+				<div className='text-sm mt-1'>
+					<Link href='/auth/password/forgot' className='underline'>
+						¿Olvidaste tu contraseña?
+					</Link>
+				</div>
+
+				{isError && (
+					<p className='text-red-500 mt-2'>
+						{(error as Error).message}
+					</p>
+				)}
+				{isSuccess && (
+					<p className='text-green-600 mt-2'>
+						{JSON.stringify(data)}
+					</p>
+				)}
+			</form>
+		</Form>
 	);
 }
