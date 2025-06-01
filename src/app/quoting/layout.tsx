@@ -4,7 +4,7 @@ export default function QuotingLayout({
 	children: React.ReactNode;
 }) {
 	return (
-		<div className='flex flex-col h-screen'>
+		<div>
 			<h1 className='text-2xl font-bold text-center my-4'>Cotizador</h1>
 			{children}
 		</div>

@@ -7,11 +7,10 @@ import {
 	NavigationMenuList,
 } from '@/components/ui/navigation-menu';
 import { SquareUser } from 'lucide-react';
-import { ThemeToggle } from './ThemeToggle';
 
 export default function NavBar() {
 	return (
-		<nav className='w-full flex items-center justify-between h-16 px-4 border-b bg-background'>
+		<nav className='fixed top-0 left-0 w-full flex items-center justify-between h-16 px-4 border-b bg-background z-50'>
 			{/* Brand */}
 			<span className='font-bold text-xl'>CutForge</span>
 			{/* Navigation Links */}
@@ -48,9 +47,6 @@ export default function NavBar() {
 								<SquareUser />
 								Cerrar sesión
 							</Button>
-						</NavigationMenuItem>
-						<NavigationMenuItem>
-							<ThemeToggle />
 						</NavigationMenuItem>
 					</NavigationMenuList>
 				</NavigationMenu>
