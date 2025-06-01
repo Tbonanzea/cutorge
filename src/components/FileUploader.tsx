@@ -1,6 +1,6 @@
 'use client';
 import { useUploadFileMutation } from '@/hooks/useUploadFileMutation';
-import { MAX_FILE_SIZE, MAX_FILES } from '@/utils/constants';
+import { MAX_FILE_SIZE, MAX_FILES } from '@/lib/utils/constants';
 import React, { useCallback } from 'react';
 import { FileRejection, useDropzone } from 'react-dropzone';
 
