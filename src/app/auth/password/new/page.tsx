@@ -1,4 +1,5 @@
 import NewPasswordForm from '@/components/forms/NewPasswordForm';
+import { Card, CardContent, CardTitle } from '@/components/ui/card';
 import { redirect } from 'next/navigation';
 
 interface NewPasswordPageProps {
@@ -15,5 +16,18 @@ export default async function NewPasswordPage({
 		redirect(`/error?error=${error.message}`);
 	}
 
-	return <NewPasswordForm emailRedirectTo={emailRedirectTo as string} />;
+	return (
+		<div className='flex justify-center pt-25'>
+			<Card className='w-full max-w-md max-h-[90vh] overflow-y-auto'>
+				<CardTitle className='text-center text-2xl font-bold'>
+					Establecer Nueva Contraseña
+				</CardTitle>
+				<CardContent>
+					<NewPasswordForm
+						emailRedirectTo={emailRedirectTo as string}
+					/>
+				</CardContent>
+			</Card>
+		</div>
+	);
 }
