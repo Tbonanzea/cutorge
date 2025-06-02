@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 
+import { signInWithGoogle } from '@/app/auth/actions';
 import { Button } from '@/components/ui/button';
 import {
 	Form,
@@ -46,6 +47,10 @@ export default function LogInForm() {
 
 	const onSubmit = (formData: LoginFormData) => {
 		logIn(formData);
+	};
+
+	const onGoogleClick = () => {
+		signInWithGoogle();
 	};
 
 	return (
@@ -89,8 +94,16 @@ export default function LogInForm() {
 					)}
 				/>
 
-				<Button type='submit' disabled={isPending}>
+				<Button type='submit' disabled={isPending} className='w-full'>
 					{isPending ? 'Iniciando sesión...' : 'Iniciar sesión'}
+				</Button>
+				<Button
+					type='button'
+					variant='outline'
+					onClick={onGoogleClick}
+					className='w-full'
+				>
+					Google
 				</Button>
 
 				<div className='text-sm mt-2'>
