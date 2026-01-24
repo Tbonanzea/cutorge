@@ -1,0 +1,92 @@
+{
+	"mcpServers": {
+		"postgres": {
+			"command": "npx",
+			"args": [
+				"-y",
+				"@modelcontextprotocol/server-postgres",
+				"${env:DATABASE_URL}"
+			],
+			"disabled": false,
+			"description": "Direct database queries and schema inspection"
+		},
+		"playwright": {
+			"command": "npx",
+			"args": [
+				"-y",
+				"@modelcontextprotocol/server-playwright"
+			],
+			"disabled": true,
+			"description": "Browser automation for E2E testing (enable when needed)",
+			"env": {
+				"PLAYWRIGHT_BROWSERS_PATH": "0"
+			}
+		}
+	},
+	"hooks": {
+		"PreToolUse": [
+			{
+				"matcher": "Bash",
+				"hooks": [
+					{
+						"type": "command",
+						"command": "if echo \"$CLAUDE_TOOL_INPUT\" | grep -qE 'rm -rf|DROP TABLE|DELETE FROM.*WHERE 1|truncate'; then echo 'BLOCK: Dangerous command detected'; exit 1; fi"
+					},
+					{
+						"type": "command",
+						"command": "if echo \"$CLAUDE_TOOL_INPUT\" | grep -qE 'npm install|pnpm install|yarn add'; then echo 'Reminder: Restart dev server after installing dependencies'; fi"
+					}
+				]
+			},
+			{
+				"matcher": "Write",
+				"hooks": [
+					{
+						"type": "command",
+						"command": "filepath=$(echo \"$ARGUMENTS\" | grep -oE 'src/components/[^\"]+\\.tsx' || true); if [ -n \"$filepath\" ] && [ -f \"$filepath\" ]; then echo 'Warning: Component file already exists. Confirm before overwriting.'; fi"
+					}
+				]
+			}
+		],
+		"PostToolUse": [
+			{
+				"matcher": "TodoWrite",
+				"hooks": [
+					{
+						"type": "command",
+						"command": "if echo \"$ARGUMENTS\" | grep -qE '\"status\":\\s*\"completed\"'; then echo 'Reminder: Consider updating CLAUDE.md if you made significant changes'; fi"
+					}
+				]
+			}
+		]
+	},
+	"defaultModel": "sonnet",
+	"quickTasks": {
+		"useHaiku": true,
+		"maxComplexity": "medium"
+	},
+	"autoValidate": {
+		"onCommit": true,
+		"onBuild": true
+	},
+	"rules": {
+		"loadRulesFrom": [
+			".claude/rules"
+		]
+	},
+	"permissions": {
+		"allow": [
+			"Bash(npm:*)",
+			"Bash(npx:*)",
+			"Bash(git:*)",
+			"Bash(node:*)",
+			"Bash(gh:*)",
+			"Read(*)",
+			"Write(*)",
+			"Edit(*)",
+			"Glob(*)",
+			"Grep(*)",
+			"Task(*)"
+		]
+	}
+}

@@ -39,3 +39,16 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# local debug files
+/localDebug
+# Claude Code local settings
+*.local.md
+
+# Local settings (user-specific, not shared)
+settings.local.json
+*.local.json
+
+# Claude Code temp files
+.tmp/
+cache/
