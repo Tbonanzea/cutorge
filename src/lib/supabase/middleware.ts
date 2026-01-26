@@ -9,6 +9,7 @@ const publicRoutes = [
 	'/auth/password/forgot',
 	'/auth/confirm',
 	'/auth/callback',
+	'/dxf-test', // Test page for DXF viewer
 ];
 
 export async function updateSession(request: NextRequest) {

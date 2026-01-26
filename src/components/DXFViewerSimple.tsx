@@ -1,0 +1,798 @@
+'use client';
+
+import React, { useEffect, useRef, useState, useCallback } from 'react';
+import * as THREE from 'three';
+import { OrbitControls, Line2, LineGeometry, LineMaterial } from 'three-stdlib';
+
+interface DXFViewerSimpleProps {
+	dxfUrl?: string;
+	className?: string;
+}
+
+const LINE_WIDTH = 2; // Line width in pixels
+
+export default function DXFViewerSimple({
+	dxfUrl,
+	className = '',
+}: DXFViewerSimpleProps) {
+	const containerRef = useRef<HTMLDivElement>(null);
+	const sceneRef = useRef<THREE.Scene | null>(null);
+	const cameraRef = useRef<THREE.OrthographicCamera | null>(null);
+	const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
+	const controlsRef = useRef<OrbitControls | null>(null);
+	const dxfObjectRef = useRef<THREE.Group | null>(null);
+	const animationFrameRef = useRef<number | null>(null);
+	const resolutionRef = useRef<THREE.Vector2>(new THREE.Vector2(1, 1));
+	const [isLoading, setIsLoading] = useState(false);
+	const [error, setError] = useState<string | null>(null);
+	const [validationErrors, setValidationErrors] = useState<string[]>([]);
+	const [selectedFile, setSelectedFile] = useState<File | null>(null);
+	const [entityCount, setEntityCount] = useState<number>(0);
+	const [dimensions, setDimensions] = useState<{ width: number; height: number } | null>(null);
+
+	useEffect(() => {
+		if (!containerRef.current) return;
+
+		const initializeScene = () => {
+			const width = containerRef.current!.clientWidth;
+			const height = containerRef.current!.clientHeight || 600;
+			const aspect = width / height;
+
+			// Store resolution for LineMaterial
+			resolutionRef.current.set(width, height);
+
+			// Scene
+			const scene = new THREE.Scene();
+			scene.background = new THREE.Color(0xfafafa);
+			sceneRef.current = scene;
+
+			// Orthographic camera - better for 2D DXF viewing
+			const frustumSize = 200;
+			const camera = new THREE.OrthographicCamera(
+				(-frustumSize * aspect) / 2,
+				(frustumSize * aspect) / 2,
+				frustumSize / 2,
+				-frustumSize / 2,
+				0.1,
+				10000
+			);
+			camera.position.set(0, 0, 100);
+			cameraRef.current = camera;
+
+			// Renderer
+			const renderer = new THREE.WebGLRenderer({ antialias: true });
+			renderer.setSize(width, height);
+			renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+			containerRef.current!.appendChild(renderer.domElement);
+			rendererRef.current = renderer;
+
+			// Controls - configured for 2D panning/zooming
+			const controls = new OrbitControls(camera, renderer.domElement);
+			controls.enableDamping = true;
+			controls.dampingFactor = 0.1;
+			controls.enableRotate = false; // Disable rotation for 2D view
+			controls.screenSpacePanning = true;
+			controls.minZoom = 0.1;
+			controls.maxZoom = 50;
+			// Remap mouse buttons: left click for pan (2D view)
+			controls.mouseButtons = {
+				LEFT: THREE.MOUSE.PAN,
+				MIDDLE: THREE.MOUSE.DOLLY,
+				RIGHT: THREE.MOUSE.ROTATE,
+			};
+			controlsRef.current = controls;
+
+			// Add grid helper for reference
+			const gridHelper = new THREE.GridHelper(500, 50, 0xcccccc, 0xe0e0e0);
+			gridHelper.rotation.x = Math.PI / 2;
+			scene.add(gridHelper);
+
+			// Animation loop
+			const animate = () => {
+				animationFrameRef.current = requestAnimationFrame(animate);
+				controls.update();
+				renderer.render(scene, camera);
+			};
+			animate();
+		};
+
+		initializeScene();
+
+		const handleResize = () => {
+			if (
+				!containerRef.current ||
+				!cameraRef.current ||
+				!rendererRef.current
+			)
+				return;
+
+			const width = containerRef.current.clientWidth;
+			const height = containerRef.current.clientHeight || 600;
+			const aspect = width / height;
+			const frustumSize = 200;
+
+			// Update resolution for LineMaterial
+			resolutionRef.current.set(width, height);
+
+			// Update all LineMaterial resolutions in the scene
+			if (dxfObjectRef.current) {
+				dxfObjectRef.current.traverse((child) => {
+					if (child instanceof Line2) {
+						const material = child.material as LineMaterial;
+						if (material.resolution) {
+							material.resolution.set(width, height);
+						}
+					}
+				});
+			}
+
+			cameraRef.current.left = (-frustumSize * aspect) / 2;
+			cameraRef.current.right = (frustumSize * aspect) / 2;
+			cameraRef.current.top = frustumSize / 2;
+			cameraRef.current.bottom = -frustumSize / 2;
+			cameraRef.current.updateProjectionMatrix();
+			rendererRef.current.setSize(width, height);
+		};
+
+		window.addEventListener('resize', handleResize);
+
+		return () => {
+			window.removeEventListener('resize', handleResize);
+
+			if (animationFrameRef.current) {
+				cancelAnimationFrame(animationFrameRef.current);
+			}
+
+			if (controlsRef.current) {
+				controlsRef.current.dispose();
+			}
+
+			if (rendererRef.current) {
+				rendererRef.current.dispose();
+				rendererRef.current.domElement.remove();
+			}
+		};
+	}, []);
+
+	useEffect(() => {
+		if (dxfUrl && sceneRef.current) {
+			loadDXFFromPath(dxfUrl);
+		}
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [dxfUrl]);
+
+	const fitCameraToObject = useCallback((object: THREE.Group) => {
+		if (!cameraRef.current || !controlsRef.current || !containerRef.current)
+			return;
+
+		const box = new THREE.Box3().setFromObject(object);
+		if (box.isEmpty()) return;
+
+		const center = box.getCenter(new THREE.Vector3());
+		const size = box.getSize(new THREE.Vector3());
+
+		// Store dimensions (DXF units are typically mm)
+		setDimensions({
+			width: Math.abs(size.x),
+			height: Math.abs(size.y),
+		});
+
+		const width = containerRef.current.clientWidth;
+		const height = containerRef.current.clientHeight || 600;
+		const aspect = width / height;
+
+		// Calculate zoom to fit the object with padding
+		const maxDim = Math.max(size.x, size.y / aspect);
+		const padding = 1.2;
+		const zoom = 200 / (maxDim * padding);
+
+		cameraRef.current.zoom = Math.max(0.1, Math.min(zoom, 50));
+		cameraRef.current.position.set(center.x, center.y, 100);
+		cameraRef.current.updateProjectionMatrix();
+
+		controlsRef.current.target.set(center.x, center.y, 0);
+		controlsRef.current.update();
+	}, []);
+
+	const validateDXF = (dxf: any): string[] => {
+		const errors: string[] = [];
+
+		if (
+			!dxf.entities ||
+			!Array.isArray(dxf.entities) ||
+			dxf.entities.length === 0
+		) {
+			errors.push('DXF file contains no valid entities');
+			return errors;
+		}
+
+		dxf.entities.forEach((entity: any, index: number) => {
+			if (!entity.type) {
+				errors.push(`Entity ${index + 1}: Missing entity type`);
+				return;
+			}
+
+			switch (entity.type) {
+				case 'LINE':
+					if (!entity.vertices || entity.vertices.length !== 2) {
+						errors.push(
+							`Entity ${index + 1} (LINE): Incomplete - must have exactly 2 vertices`
+						);
+					} else {
+						entity.vertices.forEach((v: any, vIndex: number) => {
+							if (v.x === undefined || v.y === undefined) {
+								errors.push(
+									`Entity ${index + 1} (LINE): Vertex ${vIndex + 1} has invalid coordinates`
+								);
+							}
+							if (isNaN(v.x) || isNaN(v.y)) {
+								errors.push(
+									`Entity ${index + 1} (LINE): Vertex ${vIndex + 1} has invalid numeric values`
+								);
+							}
+						});
+					}
+					break;
+
+				case 'LWPOLYLINE':
+				case 'POLYLINE':
+					if (!entity.vertices || entity.vertices.length < 2) {
+						errors.push(
+							`Entity ${index + 1} (${entity.type}): Incomplete - must have at least 2 vertices`
+						);
+					} else {
+						entity.vertices.forEach((v: any, vIndex: number) => {
+							if (v.x === undefined || v.y === undefined) {
+								errors.push(
+									`Entity ${index + 1} (${entity.type}): Vertex ${vIndex + 1} has invalid coordinates`
+								);
+							}
+							if (isNaN(v.x) || isNaN(v.y)) {
+								errors.push(
+									`Entity ${index + 1} (${entity.type}): Vertex ${vIndex + 1} has invalid numeric values`
+								);
+							}
+						});
+					}
+					break;
+
+				case 'CIRCLE':
+					if (
+						!entity.center ||
+						entity.center.x === undefined ||
+						entity.center.y === undefined
+					) {
+						errors.push(`Entity ${index + 1} (CIRCLE): Invalid center`);
+					}
+					if (
+						!entity.radius ||
+						entity.radius <= 0 ||
+						isNaN(entity.radius)
+					) {
+						errors.push(`Entity ${index + 1} (CIRCLE): Invalid radius`);
+					}
+					break;
+
+				case 'ARC':
+					if (
+						!entity.center ||
+						entity.center.x === undefined ||
+						entity.center.y === undefined
+					) {
+						errors.push(`Entity ${index + 1} (ARC): Invalid center`);
+					}
+					if (
+						!entity.radius ||
+						entity.radius <= 0 ||
+						isNaN(entity.radius)
+					) {
+						errors.push(`Entity ${index + 1} (ARC): Invalid radius`);
+					}
+					if (
+						entity.startAngle === undefined ||
+						entity.endAngle === undefined
+					) {
+						errors.push(
+							`Entity ${index + 1} (ARC): Invalid start or end angle`
+						);
+					}
+					if (isNaN(entity.startAngle) || isNaN(entity.endAngle)) {
+						errors.push(
+							`Entity ${index + 1} (ARC): Invalid numeric angle values`
+						);
+					}
+					break;
+
+				case 'SPLINE':
+					if (
+						!entity.controlPoints ||
+						entity.controlPoints.length < 2
+					) {
+						errors.push(
+							`Entity ${index + 1} (SPLINE): Insufficient control points`
+						);
+					}
+					break;
+
+				default:
+					// Unsupported types - just log to console
+					console.warn(`Unvalidated entity type: ${entity.type}`);
+			}
+		});
+
+		// Validate file extents
+		if (dxf.header && dxf.header.$EXTMIN && dxf.header.$EXTMAX) {
+			const extMin = dxf.header.$EXTMIN;
+			const extMax = dxf.header.$EXTMAX;
+
+			if (extMin.x >= extMax.x || extMin.y >= extMax.y) {
+				errors.push(
+					'DXF file has invalid extents - possible open or corrupt entities'
+				);
+			}
+
+			// Check for extreme values indicating problems
+			const extremeValue = 1e19;
+			if (
+				Math.abs(extMin.x) > extremeValue ||
+				Math.abs(extMin.y) > extremeValue ||
+				Math.abs(extMax.x) > extremeValue ||
+				Math.abs(extMax.y) > extremeValue
+			) {
+				errors.push(
+					'DXF file contains entities with extreme coordinates - file may be corrupt'
+				);
+			}
+		}
+
+		return errors;
+	};
+
+	const loadDXFFromPath = async (path: string) => {
+		if (!sceneRef.current) return;
+
+		setIsLoading(true);
+		setError(null);
+		setValidationErrors([]);
+
+		try {
+			console.log('Loading DXF from:', path);
+
+			const response = await fetch(path);
+			if (!response.ok) {
+				throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+			}
+
+			const dxfString = await response.text();
+			await parseDXF(dxfString);
+		} catch (err) {
+			console.error('Error loading DXF:', err);
+			setError('Error loading DXF file: ' + (err as Error).message);
+		} finally {
+			setIsLoading(false);
+		}
+	};
+
+	const parseDXF = async (dxfString: string) => {
+		if (!sceneRef.current) return;
+
+		try {
+			const DxfParser = (await import('dxf-parser')).default;
+			const parser = new DxfParser();
+			const dxf = parser.parseSync(dxfString);
+
+			console.log('DXF parsed:', dxf);
+
+			if (!dxf) {
+				throw new Error('Failed to parse DXF file');
+			}
+
+			// Validate the DXF file - this blocks on errors
+			const errors = validateDXF(dxf);
+			if (errors.length > 0) {
+				setValidationErrors(errors);
+				const errorMessage = errors.join('\n• ');
+				throw new Error(`Invalid DXF file:\n• ${errorMessage}`);
+			}
+
+			setValidationErrors([]);
+
+			// Dispose previous object and its resources
+			if (dxfObjectRef.current) {
+				disposeObject(dxfObjectRef.current);
+				sceneRef.current.remove(dxfObjectRef.current);
+			}
+
+			const group = new THREE.Group();
+			let renderedCount = 0;
+
+			// Parse entities
+			if (dxf.entities && Array.isArray(dxf.entities)) {
+				dxf.entities.forEach((entity: any) => {
+					try {
+						const mesh = createEntityMesh(entity);
+						if (mesh) {
+							group.add(mesh);
+							renderedCount++;
+						}
+					} catch (err) {
+						console.warn('Error processing entity:', entity.type, err);
+					}
+				});
+			}
+
+			if (group.children.length === 0) {
+				throw new Error('No valid entities found in DXF file');
+			}
+
+			dxfObjectRef.current = group;
+			sceneRef.current.add(group);
+			setEntityCount(renderedCount);
+			fitCameraToObject(group);
+
+			console.log('DXF rendered with', renderedCount, 'entities');
+		} catch (err) {
+			console.error('Error parsing DXF:', err);
+			throw err;
+		}
+	};
+
+	// Properly dispose Three.js objects to prevent memory leaks
+	const disposeObject = (object: THREE.Object3D) => {
+		object.traverse((child) => {
+			if (child instanceof Line2) {
+				child.geometry?.dispose();
+				if (child.material) {
+					(child.material as LineMaterial).dispose();
+				}
+			}
+			if (child instanceof THREE.Mesh || child instanceof THREE.Line) {
+				child.geometry?.dispose();
+				if (child.material) {
+					if (Array.isArray(child.material)) {
+						child.material.forEach((m) => m.dispose());
+					} else {
+						child.material.dispose();
+					}
+				}
+			}
+			if (child instanceof THREE.Points) {
+				child.geometry?.dispose();
+				if (child.material instanceof THREE.PointsMaterial) {
+					child.material.dispose();
+				}
+			}
+		});
+	};
+
+	const createLine2FromPoints = (points: THREE.Vector3[], color: number): Line2 => {
+		const geometry = new LineGeometry();
+		const positions: number[] = [];
+		points.forEach((p) => {
+			positions.push(p.x, p.y, p.z);
+		});
+		geometry.setPositions(positions);
+
+		const material = new LineMaterial({
+			color: color,
+			linewidth: LINE_WIDTH,
+			resolution: resolutionRef.current,
+			worldUnits: false, // Use screen-space line width
+		});
+
+		return new Line2(geometry, material);
+	};
+
+	const createEntityMesh = (entity: any): THREE.Object3D | null => {
+		const color = getEntityColor(entity);
+
+		switch (entity.type) {
+			case 'LINE': {
+				if (!entity.vertices || entity.vertices.length < 2) return null;
+				const points = [
+					new THREE.Vector3(
+						entity.vertices[0].x,
+						entity.vertices[0].y,
+						entity.vertices[0].z || 0
+					),
+					new THREE.Vector3(
+						entity.vertices[1].x,
+						entity.vertices[1].y,
+						entity.vertices[1].z || 0
+					),
+				];
+				return createLine2FromPoints(points, color);
+			}
+
+			case 'LWPOLYLINE':
+			case 'POLYLINE': {
+				if (!entity.vertices || entity.vertices.length < 2) return null;
+				const points = entity.vertices.map(
+					(v: any) => new THREE.Vector3(v.x, v.y, v.z || 0)
+				);
+				// Close the polyline if shape is closed
+				if (entity.shape) {
+					points.push(points[0].clone());
+				}
+				return createLine2FromPoints(points, color);
+			}
+
+			case 'CIRCLE': {
+				// Create circle from points
+				const segments = 64;
+				const points: THREE.Vector3[] = [];
+				for (let i = 0; i <= segments; i++) {
+					const theta = (i / segments) * Math.PI * 2;
+					points.push(
+						new THREE.Vector3(
+							entity.center.x + entity.radius * Math.cos(theta),
+							entity.center.y + entity.radius * Math.sin(theta),
+							entity.center.z || 0
+						)
+					);
+				}
+				return createLine2FromPoints(points, color);
+			}
+
+			case 'ARC': {
+				// DXF arcs go counter-clockwise from startAngle to endAngle
+				const cx = entity.center.x;
+				const cy = entity.center.y;
+				const cz = entity.center.z || 0;
+				const r = entity.radius;
+
+				const startAngle = entity.startAngle;
+				const endAngle = entity.endAngle;
+
+				// Calculate sweep angle (always counter-clockwise in DXF)
+				let sweep = endAngle - startAngle;
+				if (sweep <= 0) {
+					sweep += 2 * Math.PI;
+				}
+
+				const points: THREE.Vector3[] = [];
+				const segments = Math.max(32, Math.ceil((sweep / Math.PI) * 32));
+
+				for (let i = 0; i <= segments; i++) {
+					const t = i / segments;
+					const angle = startAngle + t * sweep;
+					points.push(
+						new THREE.Vector3(
+							cx + r * Math.cos(angle),
+							cy + r * Math.sin(angle),
+							cz
+						)
+					);
+				}
+				return createLine2FromPoints(points, color);
+			}
+
+			case 'ELLIPSE': {
+				if (!entity.center || !entity.majorAxisEndPoint) return null;
+				const majorRadius = Math.sqrt(
+					entity.majorAxisEndPoint.x ** 2 +
+						entity.majorAxisEndPoint.y ** 2
+				);
+				const minorRadius = majorRadius * entity.axisRatio;
+				const rotation = Math.atan2(
+					entity.majorAxisEndPoint.y,
+					entity.majorAxisEndPoint.x
+				);
+				const startAngle = entity.startAngle || 0;
+				const endAngle = entity.endAngle || Math.PI * 2;
+
+				const curve = new THREE.EllipseCurve(
+					entity.center.x,
+					entity.center.y,
+					majorRadius,
+					minorRadius,
+					startAngle,
+					endAngle,
+					false,
+					rotation
+				);
+				const curvePoints = curve.getPoints(64);
+				const points = curvePoints.map(
+					(p) => new THREE.Vector3(p.x, p.y, entity.center.z || 0)
+				);
+				return createLine2FromPoints(points, color);
+			}
+
+			case 'SPLINE': {
+				if (!entity.controlPoints || entity.controlPoints.length < 2)
+					return null;
+				const splinePoints = entity.controlPoints.map(
+					(p: any) => new THREE.Vector3(p.x, p.y, p.z || 0)
+				);
+				const curve = new THREE.CatmullRomCurve3(splinePoints);
+				const points = curve.getPoints(entity.controlPoints.length * 10);
+				return createLine2FromPoints(points, color);
+			}
+
+			case 'POINT': {
+				const pointGeometry = new THREE.BufferGeometry();
+				pointGeometry.setAttribute(
+					'position',
+					new THREE.Float32BufferAttribute(
+						[
+							entity.position.x,
+							entity.position.y,
+							entity.position.z || 0,
+						],
+						3
+					)
+				);
+				const pointMaterial = new THREE.PointsMaterial({
+					color: color,
+					size: 5,
+					sizeAttenuation: false,
+				});
+				return new THREE.Points(pointGeometry, pointMaterial);
+			}
+
+			default:
+				console.log('Unsupported entity type:', entity.type);
+				return null;
+		}
+	};
+
+	const getEntityColor = (entity: any): number => {
+		// Use entity color if available, otherwise default to black
+		if (entity.color !== undefined && entity.color !== 256) {
+			// AutoCAD color index - simplified mapping
+			const colorMap: Record<number, number> = {
+				1: 0xff0000, // Red
+				2: 0xffff00, // Yellow
+				3: 0x00ff00, // Green
+				4: 0x00ffff, // Cyan
+				5: 0x0000ff, // Blue
+				6: 0xff00ff, // Magenta
+				7: 0x000000, // White/Black
+			};
+			return colorMap[entity.color] || 0x000000;
+		}
+		return 0x000000;
+	};
+
+	const handleFileSelect = async (
+		event: React.ChangeEvent<HTMLInputElement>
+	) => {
+		const file = event.target.files?.[0];
+		if (!file || !sceneRef.current) return;
+
+		setSelectedFile(file);
+		setIsLoading(true);
+		setError(null);
+		setValidationErrors([]);
+
+		try {
+			const text = await file.text();
+			await parseDXF(text);
+		} catch (err) {
+			console.error('Error loading file:', err);
+			setError('Error loading file: ' + (err as Error).message);
+		} finally {
+			setIsLoading(false);
+		}
+	};
+
+	const handleClear = () => {
+		if (sceneRef.current && dxfObjectRef.current) {
+			disposeObject(dxfObjectRef.current);
+			sceneRef.current.remove(dxfObjectRef.current);
+			dxfObjectRef.current = null;
+		}
+		setSelectedFile(null);
+		setError(null);
+		setValidationErrors([]);
+		setEntityCount(0);
+		setDimensions(null);
+
+		// Reset camera
+		if (cameraRef.current && controlsRef.current) {
+			cameraRef.current.zoom = 1;
+			cameraRef.current.position.set(0, 0, 100);
+			cameraRef.current.updateProjectionMatrix();
+			controlsRef.current.target.set(0, 0, 0);
+			controlsRef.current.update();
+		}
+	};
+
+	const handleReset = () => {
+		if (dxfObjectRef.current) {
+			fitCameraToObject(dxfObjectRef.current);
+		}
+	};
+
+	return (
+		<div className={`flex flex-col gap-4 ${className}`}>
+			<div className='flex flex-wrap gap-4 items-center'>
+				<div className='flex gap-2'>
+					<input
+						type='file'
+						accept='.dxf'
+						onChange={handleFileSelect}
+						className='block text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100'
+					/>
+					<button
+						onClick={handleClear}
+						disabled={!selectedFile && !dxfUrl}
+						className='px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 disabled:bg-gray-300 disabled:cursor-not-allowed'
+					>
+						Clear
+					</button>
+					<button
+						onClick={handleReset}
+						className='px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600'
+					>
+						Reset View
+					</button>
+				</div>
+				{(selectedFile || entityCount > 0) && (
+					<span className='text-sm text-gray-600'>
+						{selectedFile?.name || 'Loaded file'}
+						{entityCount > 0 && (
+							<span className='ml-2 px-2 py-0.5 bg-green-100 text-green-700 rounded'>
+								{entityCount} entities
+							</span>
+						)}
+					</span>
+				)}
+				{dimensions && (
+					<div className='flex gap-3 text-sm'>
+						<span className='px-2 py-0.5 bg-blue-100 text-blue-700 rounded'>
+							W: {dimensions.width.toFixed(2)} mm
+						</span>
+						<span className='px-2 py-0.5 bg-blue-100 text-blue-700 rounded'>
+							H: {dimensions.height.toFixed(2)} mm
+						</span>
+					</div>
+				)}
+			</div>
+
+			{error && (
+				<div className='p-4 bg-red-50 border border-red-200 rounded-md'>
+					<h4 className='font-semibold text-red-800 mb-2'>Error</h4>
+					<p className='text-red-700 whitespace-pre-wrap'>{error}</p>
+				</div>
+			)}
+
+			{validationErrors.length > 0 && !error && (
+				<div className='p-4 bg-yellow-50 border border-yellow-200 rounded-md'>
+					<h4 className='font-semibold text-yellow-800 mb-2'>
+						Validation Warnings
+					</h4>
+					<ul className='list-disc list-inside text-yellow-700 space-y-1'>
+						{validationErrors.map((err, idx) => (
+							<li key={idx} className='text-sm'>
+								{err}
+							</li>
+						))}
+					</ul>
+				</div>
+			)}
+
+			{isLoading && (
+				<div className='p-4 bg-blue-50 border border-blue-200 rounded-md text-blue-700'>
+					Loading DXF file...
+				</div>
+			)}
+
+			<div
+				ref={containerRef}
+				className='w-full border border-gray-300 rounded-md overflow-hidden bg-gray-100'
+				style={{ minHeight: '600px' }}
+			/>
+
+			<div className='text-sm text-gray-600 space-y-1'>
+				<p>
+					<strong>Controls:</strong>
+				</p>
+				<ul className='list-disc list-inside ml-4'>
+					<li>Left click + drag: Pan</li>
+					<li>Mouse wheel: Zoom</li>
+				</ul>
+			</div>
+		</div>
+	);
+}

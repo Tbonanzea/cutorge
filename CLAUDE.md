@@ -2,6 +2,10 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Most Important Rules
+
+- Always start tasks by using the workspace-orchestrator agent.
+
 ## Project Overview
 
 CutForge is a custom cutting platform built with Next.js 15 (App Router), Supabase (SSR auth), Prisma (PostgreSQL ORM), TanStack Query (async state), React Hook Form, and Tailwind CSS. The application handles DXF file uploads, material selection, and generates quotes for custom cutting jobs.
@@ -59,9 +63,9 @@ The quoting system uses a **global context provider** for state management acros
 
 - **Root layout**: `src/app/layout.tsx` wraps all routes with TanStack Query Provider
 - **Grouped routes**:
-  - `(dashboard)` - Protected admin routes with custom layout
-  - `/quoting` - Multi-step quoting flow with QuotingProvider context
-  - `/auth` - Authentication pages (login, signup, password reset)
+    - `(dashboard)` - Protected admin routes with custom layout
+    - `/quoting` - Multi-step quoting flow with QuotingProvider context
+    - `/auth` - Authentication pages (login, signup, password reset)
 - **API routes**: Located in `src/app/api/` (e.g., `/api/file` for S3 operations)
 
 ### File Upload & Storage
@@ -75,8 +79,8 @@ The quoting system uses a **global context provider** for state management acros
 ### State Management Patterns
 
 - **TanStack Query**: For server state, async operations, caching
-  - Custom hooks pattern: `src/hooks/useLoginMutation.ts`, `useUploadFileMutation.ts`
-  - DevTools enabled in development via `src/app/providers.tsx`
+    - Custom hooks pattern: `src/hooks/useLoginMutation.ts`, `useUploadFileMutation.ts`
+    - DevTools enabled in development via `src/app/providers.tsx`
 - **Context API**: For complex, multi-page flows (QuotingContext)
 - **React Hook Form**: For form state and validation
 
@@ -84,12 +88,14 @@ The quoting system uses a **global context provider** for state management acros
 
 Required variables (see `.env.example`):
 
-**Client-side** (NEXT_PUBLIC_*):
+**Client-side** (NEXT*PUBLIC*\*):
+
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 - `NEXT_PUBLIC_SITE_URL`
 
 **Server-side**:
+
 - `DATABASE_URL` - PostgreSQL connection string
 - `SUPABASE_SERVICE_ROLE_KEY` - For server-side Supabase operations
 - `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`, `AWS_S3_BUCKET_NAME` - S3 file storage
@@ -120,27 +126,34 @@ MCP servers extend Claude Code's capabilities with specialized tools for databas
 **Purpose**: Direct database queries, schema inspection, query optimization
 
 **Configuration** (`.claude/settings.json`):
+
 ```json
 {
-  "mcpServers": {
-    "postgres": {
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-postgres", "postgresql://..."],
-      "env": {
-        "DATABASE_URL": "${env:DATABASE_URL}"
-      }
-    }
-  }
+	"mcpServers": {
+		"postgres": {
+			"command": "npx",
+			"args": [
+				"-y",
+				"@modelcontextprotocol/server-postgres",
+				"postgresql://..."
+			],
+			"env": {
+				"DATABASE_URL": "${env:DATABASE_URL}"
+			}
+		}
+	}
 }
 ```
 
 **When to use**:
+
 - Inspecting database schema during development
 - Debugging query performance with EXPLAIN ANALYZE
 - Validating Prisma migrations
 - Checking RLS policies (if using Supabase RLS)
 
 **Example usage**:
+
 ```typescript
 // Use MCP Postgres tool to inspect schema
 // Then write Prisma queries based on actual schema
@@ -151,18 +164,20 @@ MCP servers extend Claude Code's capabilities with specialized tools for databas
 **Purpose**: Automated browser testing, visual regression, E2E testing
 
 **Configuration**:
+
 ```json
 {
-  "mcpServers": {
-    "playwright": {
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-playwright"]
-    }
-  }
+	"mcpServers": {
+		"playwright": {
+			"command": "npx",
+			"args": ["-y", "@modelcontextprotocol/server-playwright"]
+		}
+	}
 }
 ```
 
 **When to use**:
+
 - Testing quoting flow end-to-end
 - Verifying DXF file upload and preview
 - Accessibility testing with real browser
@@ -175,6 +190,7 @@ MCP servers extend Claude Code's capabilities with specialized tools for databas
 **Note**: This is included by default in Claude Code.
 
 **When to use**:
+
 - Finding all components using a specific pattern
 - Analyzing import dependencies
 - Searching across large codebases
@@ -183,12 +199,14 @@ MCP servers extend Claude Code's capabilities with specialized tools for databas
 ### MCP Server Usage Guidelines
 
 **DO use MCP servers for**:
+
 - Database inspection and schema validation
 - E2E testing with real browser
 - Complex file tree analysis
 - External service integration
 
 **DON'T use MCP servers for**:
+
 - Simple file reads (use Read tool)
 - Basic git operations (use Bash tool)
 - Code editing (use Edit/Write tools)
@@ -197,6 +215,7 @@ MCP servers extend Claude Code's capabilities with specialized tools for databas
 ### Configuration Location
 
 MCP servers are configured in:
+
 - **Project-level**: `.claude/settings.json` (shared with team, checked into git)
 - **Personal-level**: `~/.claude/settings.json` (user-specific, not in git)
 
@@ -249,15 +268,18 @@ See `.claude/README.md` for complete documentation on the agent system.
 ### Quick Reference
 
 **Core workflows**:
+
 - `/feature <description>` - Implement new feature with full review
 - `/bug <description>` - Fix bug with root cause analysis
 - `/review [file|pr]` - Code review with architectural checklist
 
 **Audits**:
+
 - `/audit-app-router` - Check Next.js patterns
 - `/audit-tailwind` - Check UI and accessibility
 - `/audit-types` - Check TypeScript safety
 
 **Deployment**:
+
 - `/deploy-preview` - Deploy to staging
 - `/deploy-prod` - Deploy to production (requires approval)
