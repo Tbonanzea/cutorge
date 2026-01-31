@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
+import {
+	sendCustomerConfirmationEmail,
+	sendAdminNotificationEmail,
+} from '@/lib/email';
+import { getExtraServiceById } from '@/lib/constants';
 
 /**
  * Zod schema for file data
@@ -112,7 +117,45 @@ export async function POST(request: NextRequest) {
 						},
 					},
 				},
+				user: {
+					select: {
+						email: true,
+						firstName: true,
+						lastName: true,
+					},
+				},
 			},
+		});
+
+		// Send confirmation emails (non-blocking)
+		const emailData = {
+			orderId: order.id,
+			customerEmail: order.user.email,
+			customerName: order.user.firstName
+				? `${order.user.firstName} ${order.user.lastName || ''}`
+				: undefined,
+			totalPrice: order.totalPrice,
+			items: order.items.map((item) => ({
+				filename: item.file.filename,
+				materialName: item.materialType.material.name,
+				materialType: `${item.materialType.width}x${item.materialType.length}x${item.materialType.height}mm`,
+				quantity: item.quantity,
+				price: item.price,
+			})),
+			extras: validatedData.extras
+				? validatedData.extras
+						.map((id) => getExtraServiceById(id)?.name)
+						.filter(Boolean) as string[]
+				: undefined,
+		};
+
+		// Send emails asynchronously (don't block response)
+		Promise.all([
+			sendCustomerConfirmationEmail(emailData),
+			sendAdminNotificationEmail(emailData),
+		]).catch((error) => {
+			console.error('Error sending emails:', error);
+			// Don't fail the request if emails fail
 		});
 
 		return NextResponse.json(

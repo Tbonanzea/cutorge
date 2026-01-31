@@ -1,18 +1,18 @@
 'use client';
 
 import { useSearchParams, useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { CheckCircle2, Mail, MessageCircle, Home } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 
-export default function QuoteSuccessPage() {
+function SuccessContent() {
 	const searchParams = useSearchParams();
 	const router = useRouter();
 	const orderId = searchParams.get('orderId');
 	const [orderData, setOrderData] = useState<any>(null);
-	const [loading, setLoading] = useState(true);
+	const [_loading, setLoading] = useState(true);
 
 	useEffect(() => {
 		if (!orderId) {
@@ -190,5 +190,13 @@ export default function QuoteSuccessPage() {
 				</CardContent>
 			</Card>
 		</div>
+	);
+}
+
+export default function QuoteSuccessPage() {
+	return (
+		<Suspense fallback={<div className="text-center py-12">Loading...</div>}>
+			<SuccessContent />
+		</Suspense>
 	);
 }

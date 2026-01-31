@@ -116,7 +116,8 @@ export function useSubmitQuote() {
 			// Add extras to total
 			const extrasTotal = calculateExtrasTotal(cart.extras || []);
 
-			const grandTotal = totalPrice + extrasTotal;
+			// Calculate grand total (used for order total)
+			const _grandTotal = totalPrice + extrasTotal;
 
 			// Prepare order items for API
 			const orderItems = uploadedItems.map((item) => ({

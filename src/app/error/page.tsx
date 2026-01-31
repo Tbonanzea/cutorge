@@ -1,8 +1,9 @@
 'use client';
 
 import { redirect, useSearchParams } from 'next/navigation';
+import { Suspense } from 'react';
 
-export default function ErrorPage() {
+function ErrorContent() {
 	const searchParams = useSearchParams();
 	if (!searchParams.get('error')) {
 		redirect('/');
@@ -19,5 +20,13 @@ export default function ErrorPage() {
 				<p>Descripción: {searchParams.get('error_description')}</p>
 			)}
 		</div>
+	);
+}
+
+export default function ErrorPage() {
+	return (
+		<Suspense fallback={<div>Loading...</div>}>
+			<ErrorContent />
+		</Suspense>
 	);
 }
