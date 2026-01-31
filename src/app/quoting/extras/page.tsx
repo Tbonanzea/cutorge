@@ -12,51 +12,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { useQuoting } from '@/context/quotingContext';
 import { useState, useEffect } from 'react';
-
-const EXTRA_SERVICES = [
-	{
-		id: 'engraving',
-		name: 'Grabado láser',
-		description: 'Personaliza tu pieza con texto o diseños grabados',
-		price: 15,
-		unit: 'por pieza',
-	},
-	{
-		id: 'painting',
-		name: 'Pintura/Acabado',
-		description: 'Aplicación de pintura o acabados especiales',
-		price: 25,
-		unit: 'por pieza',
-	},
-	{
-		id: 'assembly',
-		name: 'Ensamblaje',
-		description: 'Armado de piezas múltiples',
-		price: 50,
-		unit: 'por proyecto',
-	},
-	{
-		id: 'express',
-		name: 'Entrega Express',
-		description: 'Entrega en 24-48 horas',
-		price: 100,
-		unit: 'por pedido',
-	},
-	{
-		id: 'packaging',
-		name: 'Empaque Especial',
-		description: 'Empaque personalizado para presentación',
-		price: 20,
-		unit: 'por pedido',
-	},
-	{
-		id: 'design-review',
-		name: 'Revisión de Diseño',
-		description: 'Análisis y optimización del diseño para corte',
-		price: 75,
-		unit: 'por proyecto',
-	},
-];
+import { EXTRA_SERVICES, calculateExtrasTotal } from '@/lib/constants';
 
 export default function Extras() {
 	const { cart, setExtras, validateCurrentStep, nextStep, prevStep } =
@@ -86,12 +42,7 @@ export default function Extras() {
 		}
 	};
 
-	const calculateExtrasTotal = () => {
-		return selectedExtras.reduce((total, extraId) => {
-			const extra = EXTRA_SERVICES.find((e) => e.id === extraId);
-			return total + (extra?.price || 0);
-		}, 0);
-	};
+	const extrasTotal = calculateExtrasTotal(selectedExtras);
 
 	return (
 		<div className='space-y-6'>
@@ -196,7 +147,7 @@ export default function Extras() {
 									Total Extras:
 								</span>
 								<span className='font-bold text-green-600 text-lg'>
-									${calculateExtrasTotal()}
+									${extrasTotal}
 								</span>
 							</div>
 						</div>

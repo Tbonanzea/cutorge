@@ -3,6 +3,7 @@
 import { useMutation } from '@tanstack/react-query';
 import { useQuoting } from '@/context/quotingContext';
 import { useRouter } from 'next/navigation';
+import { calculateExtrasTotal } from '@/lib/constants';
 
 interface SubmitQuoteResponse {
 	orderId: string;
@@ -116,12 +117,7 @@ export function useSubmitQuote() {
 			}, 0);
 
 			// Add extras to total
-			const extrasTotal = (cart.extras || []).reduce((sum, _extraId) => {
-				// This should match the EXTRA_SERVICES in extras/page.tsx
-				// For now, we'll use a simplified calculation
-				// TODO: Move EXTRA_SERVICES to a shared constants file
-				return sum;
-			}, 0);
+			const extrasTotal = calculateExtrasTotal(cart.extras || []);
 
 			const grandTotal = totalPrice + extrasTotal;
 
