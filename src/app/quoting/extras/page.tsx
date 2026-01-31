@@ -10,8 +10,8 @@ import {
 } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { useQuoting, useStepValidation } from '@/context/quotingContext';
-import { useState } from 'react';
+import { useQuoting } from '@/context/quotingContext';
+import { useState, useEffect } from 'react';
 
 const EXTRA_SERVICES = [
 	{
@@ -59,10 +59,17 @@ const EXTRA_SERVICES = [
 ];
 
 export default function Extras() {
-	const { data, updateData, nextStep, prevStep } = useQuoting();
-	const { validateCurrentStep } = useStepValidation();
+	const { cart, setExtras, validateCurrentStep, nextStep, prevStep } =
+		useQuoting();
 
-	const [selectedExtras, setSelectedExtras] = useState<string[]>(data.extras);
+	const [selectedExtras, setSelectedExtras] = useState<string[]>(
+		cart.extras || []
+	);
+
+	// Sync local state with context on mount
+	useEffect(() => {
+		setSelectedExtras(cart.extras || []);
+	}, [cart.extras]);
 
 	const handleExtraToggle = (extraId: string) => {
 		const newExtras = selectedExtras.includes(extraId)
@@ -70,7 +77,7 @@ export default function Extras() {
 			: [...selectedExtras, extraId];
 
 		setSelectedExtras(newExtras);
-		updateData({ extras: newExtras });
+		setExtras(newExtras);
 	};
 
 	const handleContinue = () => {

@@ -18,7 +18,7 @@ import {
 	UploadCloud,
 	X,
 } from 'lucide-react';
-import { useCallback, useState } from 'react';
+import { useCallback, useState, useEffect, useRef } from 'react';
 import { FileRejection, useDropzone } from 'react-dropzone';
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
@@ -37,11 +37,11 @@ function FileUploader() {
 		addItem,
 		removeItem,
 		clearCart,
-		errors,
-		setError,
-		clearError,
 		markStep,
 	} = useQuoting();
+
+	// Track blob URLs for cleanup
+	const blobUrlsRef = useRef<Set<string>>(new Set());
 
 	const [uploadProgress, setUploadProgress] = useState<number>(0);
 	const [isUploading, setIsUploading] = useState(false);
@@ -58,6 +58,13 @@ function FileUploader() {
 			setUploadProgress(0);
 			setUploadStatus('idle');
 			setUploadErrors([]);
+
+			// Cleanup existing blob URLs before clearing cart
+			blobUrlsRef.current.forEach((url) => {
+				URL.revokeObjectURL(url);
+			});
+			blobUrlsRef.current.clear();
+
 			clearCart();
 
 			const newErrors: { fileName: string; error: string }[] = [];
@@ -79,12 +86,18 @@ function FileUploader() {
 					Math.round(((processed + 1) / acceptedFiles.length) * 100)
 				);
 
-				// Crea un QuotingCartItem por archivo
+				// Generate blob URL for preview
+				const blobUrl = URL.createObjectURL(file);
+				blobUrlsRef.current.add(blobUrl); // Track for cleanup
+
+				// Crea un QuotingCartItem por archivo con blob URL y raw file
 				const quotingFile = {
 					id: crypto.randomUUID(),
 					filename: file.name,
-					filepath: '', // Lo deberías obtener de la API si subís el archivo
+					filepath: '', // Will be set after S3 upload on submission
 					filetype: 'DXF' as const,
+					_rawFile: file, // Store raw File for later upload
+					_blobUrl: blobUrl, // Blob URL for preview
 				};
 				addItem({
 					file: quotingFile,
@@ -137,8 +150,21 @@ function FileUploader() {
 	});
 
 	const handleRemove = (index: number) => {
+		// Cleanup blob URL before removing
+		const item = cart.items[index];
+		if (item?.file._blobUrl) {
+			URL.revokeObjectURL(item.file._blobUrl);
+			blobUrlsRef.current.delete(item.file._blobUrl);
+		}
 		removeItem(index);
 	};
+
+	// Note: We intentionally don't cleanup blob URLs on unmount because
+	// they're still needed in subsequent steps (material selection, review)
+	// The URLs will be cleaned up when:
+	// 1. Individual items are removed (handleRemove)
+	// 2. New files are uploaded (onDropAccepted)
+	// 3. The browser tab is closed (automatic cleanup)
 
 	return (
 		<Card className='w-full max-w-3xl'>

@@ -6,7 +6,7 @@ import { DataTable } from './data-table';
 export default async function UsersPage({
 	searchParams,
 }: {
-	searchParams?: { page?: string };
+	searchParams?: Promise<{ page?: string }>;
 }) {
 	const params = await searchParams;
 	const page = parseInt(params?.page || '1', 10);

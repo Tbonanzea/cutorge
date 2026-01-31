@@ -1,181 +1,234 @@
 'use client';
 
 import { useQuoting } from '@/context/quotingContext';
-import { useEffect, useState } from 'react';
+import { useMaterials } from '@/hooks/useMaterials';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-
-// Tipos mock para demo (en tu app traé de la API)
-interface MaterialOption {
-  id: string;
-  name: string;
-  description?: string;
-  types: MaterialTypeOption[];
-}
-interface MaterialTypeOption {
-  id: string;
-  name: string;
-  width: number;
-  length: number;
-  height: number;
-  pricePerUnit: number;
-  stock: number;
-}
-
-const MOCK_MATERIALS: MaterialOption[] = [
-  {
-    id: 'mat1',
-    name: 'Acero',
-    types: [
-      {
-        id: 'mat1-type1',
-        name: '1mm',
-        width: 1000,
-        length: 2000,
-        height: 1,
-        pricePerUnit: 500,
-        stock: 20,
-      },
-      {
-        id: 'mat1-type2',
-        name: '2mm',
-        width: 1000,
-        length: 2000,
-        height: 2,
-        pricePerUnit: 900,
-        stock: 10,
-      },
-    ],
-  },
-  {
-    id: 'mat2',
-    name: 'Aluminio',
-    types: [
-      {
-        id: 'mat2-type1',
-        name: '0.8mm',
-        width: 1000,
-        length: 2000,
-        height: 0.8,
-        pricePerUnit: 800,
-        stock: 15,
-      },
-    ],
-  },
-];
+import {
+	Card,
+	CardContent,
+	CardDescription,
+	CardHeader,
+	CardTitle,
+} from '@/components/ui/card';
+import { Accordion } from '@/components/ui/accordion';
+import MaterialSelectionCard from '@/components/MaterialSelectionCard';
+import { Loader2, AlertCircle } from 'lucide-react';
+import { useEffect } from 'react';
 
 export default function MaterialSelectionPage() {
-  const { cart, updateItem } = useQuoting();
-  const [materials, setMaterials] = useState<MaterialOption[]>([]);
+	const { cart, updateItem, validateCurrentStep, nextStep, prevStep } =
+		useQuoting();
+	const { data: materials, isLoading, error } = useMaterials();
 
-  // Simula fetch de materiales (reemplazá por tu fetch real)
-  useEffect(() => {
-    setTimeout(() => setMaterials(MOCK_MATERIALS), 200);
-  }, []);
+	// Validate step whenever cart items change
+	useEffect(() => {
+		validateCurrentStep();
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [cart.items]);
 
-  // Handler para cambiar material
-  const handleMaterialChange = (cartIdx: number, materialId: string) => {
-    const mat = materials.find((m) => m.id === materialId);
-    updateItem(cartIdx, {
-      material: mat
-        ? {
-            id: mat.id,
-            name: mat.name,
-            description: mat.description || '',
-          }
-        : null,
-      materialType: null,
-    });
-  };
+	const handleMaterialChange = (cartIdx: number, materialId: string) => {
+		const mat = materials?.find((m) => m.id === materialId);
+		updateItem(cartIdx, {
+			material: mat
+				? {
+						id: mat.id,
+						name: mat.name,
+						description: mat.description || '',
+				  }
+				: null,
+			materialType: null, // Reset material type when material changes
+		});
+	};
 
-  // Handler para cambiar tipo
-  const handleMaterialTypeChange = (cartIdx: number, materialId: string, typeId: string) => {
-    const mat = materials.find((m) => m.id === materialId);
-    const type = mat?.types.find((t) => t.id === typeId);
-    updateItem(cartIdx, {
-      materialType: type
-        ? {
-            id: type.id,
-            width: type.width,
-            length: type.length,
-            height: type.height,
-            pricePerUnit: type.pricePerUnit,
-            massPerUnit: 0, // Simulado
-            stock: type.stock,
-            errorMargin: 0,
-            maxCutLength: 0,
-            minCutLength: 0,
-            maxCutWidth: 0,
-            minCutWidth: 0,
-          }
-        : null,
-    });
-  };
+	const handleMaterialTypeChange = (
+		cartIdx: number,
+		materialId: string,
+		typeId: string
+	) => {
+		const mat = materials?.find((m) => m.id === materialId);
+		const type = mat?.types.find((t) => t.id === typeId);
+		updateItem(cartIdx, {
+			materialType: type
+				? {
+						id: type.id,
+						width: type.width,
+						length: type.length,
+						height: type.height,
+						pricePerUnit: type.pricePerUnit,
+						massPerUnit: type.massPerUnit,
+						stock: type.stock,
+						errorMargin: type.errorMargin,
+						maxCutLength: type.maxCutLength,
+						minCutLength: type.minCutLength,
+						maxCutWidth: type.maxCutWidth,
+						minCutWidth: type.minCutWidth,
+				  }
+				: null,
+		});
+	};
 
-  return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Seleccioná material para cada archivo</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          {cart.items.length === 0 && (
-            <div className="text-gray-500">
-              No hay archivos cargados. Volvé al paso anterior.
-            </div>
-          )}
-          {cart.items.map((item, idx) => (
-            <div key={item.file.id} className="space-y-2 border-b pb-4 last:border-none last:pb-0">
-              <div className="flex flex-col md:flex-row md:items-center gap-3">
-                <div className="min-w-[180px] font-medium">{item.file.filename}</div>
-                {/* Material selector */}
-                <select
-                  className="border rounded px-3 py-2"
-                  value={item.material?.id || ''}
-                  onChange={(e) => handleMaterialChange(idx, e.target.value)}
-                >
-                  <option value="">Seleccionar material</option>
-                  {materials.map((mat) => (
-                    <option key={mat.id} value={mat.id}>
-                      {mat.name}
-                    </option>
-                  ))}
-                </select>
-                {/* Tipo de material selector */}
-                <select
-                  className="border rounded px-3 py-2"
-                  value={item.materialType?.id || ''}
-                  onChange={(e) =>
-                    handleMaterialTypeChange(idx, item.material?.id || '', e.target.value)
-                  }
-                  disabled={!item.material}
-                >
-                  <option value="">Seleccionar tipo</option>
-                  {materials
-                    .find((mat) => mat.id === item.material?.id)
-                    ?.types.map((type) => (
-                      <option key={type.id} value={type.id}>
-                        {type.name} ({type.height}mm)
-                      </option>
-                    ))}
-                </select>
-                {/* Quantity input */}
-                <input
-                  type="number"
-                  min={1}
-                  value={item.quantity}
-                  onChange={(e) =>
-                    updateItem(idx, { quantity: Number(e.target.value) || 1 })
-                  }
-                  className="border rounded px-3 py-2 w-24"
-                  placeholder="Cantidad"
-                />
-              </div>
-              {/* Podés mostrar errores o alertas aquí si querés */}
-            </div>
-          ))}
-        </CardContent>
-      </Card>
-    </div>
-  );
+	const handleQuantityChange = (cartIdx: number, quantity: number) => {
+		updateItem(cartIdx, { quantity });
+	};
+
+	const handleContinue = () => {
+		if (validateCurrentStep()) {
+			nextStep();
+		}
+	};
+
+	const canProceed =
+		cart.items.length > 0 &&
+		cart.items.every(
+			(item) => item.material && item.materialType && item.quantity > 0
+		);
+
+	if (isLoading) {
+		return (
+			<div className='flex items-center justify-center py-12'>
+				<Loader2 className='h-8 w-8 animate-spin text-primary' />
+				<span className='ml-3 text-muted-foreground'>
+					Cargando materiales...
+				</span>
+			</div>
+		);
+	}
+
+	if (error) {
+		return (
+			<Card className='border-destructive'>
+				<CardHeader>
+					<CardTitle className='text-destructive flex items-center gap-2'>
+						<AlertCircle className='h-5 w-5' />
+						Error al cargar materiales
+					</CardTitle>
+					<CardDescription>
+						{error.message ||
+							'No se pudieron cargar los materiales disponibles.'}
+					</CardDescription>
+				</CardHeader>
+				<CardContent>
+					<Button variant='outline' onClick={() => window.location.reload()}>
+						Reintentar
+					</Button>
+				</CardContent>
+			</Card>
+		);
+	}
+
+	if (!materials || materials.length === 0) {
+		return (
+			<Card>
+				<CardHeader>
+					<CardTitle>No hay materiales disponibles</CardTitle>
+					<CardDescription>
+						Por favor, contacta con soporte para más información.
+					</CardDescription>
+				</CardHeader>
+			</Card>
+		);
+	}
+
+	if (cart.items.length === 0) {
+		return (
+			<Card>
+				<CardHeader>
+					<CardTitle>No hay archivos cargados</CardTitle>
+					<CardDescription>
+						Vuelve al paso anterior para cargar archivos DXF.
+					</CardDescription>
+				</CardHeader>
+				<CardContent>
+					<Button onClick={prevStep}>Volver</Button>
+				</CardContent>
+			</Card>
+		);
+	}
+
+	return (
+		<div className='space-y-6'>
+			<Card>
+				<CardHeader>
+					<CardTitle>Selección de Material</CardTitle>
+					<CardDescription>
+						Selecciona el material y espesor para cada archivo.
+						Puedes ver una vista previa en 2D o 3D de cada diseño.
+					</CardDescription>
+				</CardHeader>
+				<CardContent>
+					<Accordion
+						type='multiple'
+						defaultValue={cart.items.map((_, idx) => `item-${idx}`)}
+						className='w-full'
+					>
+						{cart.items.map((item, idx) => (
+							<MaterialSelectionCard
+								key={`${item.file.id}-${idx}`}
+								item={item}
+								index={idx}
+								materials={materials}
+								onMaterialChange={handleMaterialChange}
+								onMaterialTypeChange={handleMaterialTypeChange}
+								onQuantityChange={handleQuantityChange}
+							/>
+						))}
+					</Accordion>
+				</CardContent>
+			</Card>
+
+			{/* Summary Card */}
+			<Card className='bg-slate-50'>
+				<CardContent className='pt-6'>
+					<div className='flex justify-between items-center'>
+						<div>
+							<p className='text-sm text-muted-foreground'>
+								Archivos configurados
+							</p>
+							<p className='text-2xl font-semibold'>
+								{
+									cart.items.filter(
+										(item) =>
+											item.material && item.materialType
+									).length
+								}{' '}
+								/ {cart.items.length}
+							</p>
+						</div>
+						<div className='text-right'>
+							<p className='text-sm text-muted-foreground'>
+								Subtotal estimado
+							</p>
+							<p className='text-2xl font-semibold text-green-600'>
+								$
+								{cart.items
+									.reduce((total, item) => {
+										if (item.materialType) {
+											return (
+												total +
+												item.materialType.pricePerUnit *
+													item.quantity
+											);
+										}
+										return total;
+									}, 0)
+									.toFixed(2)}
+							</p>
+						</div>
+					</div>
+				</CardContent>
+			</Card>
+
+			{/* Navigation */}
+			<div className='flex justify-between'>
+				<Button variant='outline' onClick={prevStep}>
+					Volver
+				</Button>
+				<Button onClick={handleContinue} disabled={!canProceed}>
+					{canProceed
+						? 'Continuar a Extras'
+						: 'Completa todos los campos'}
+				</Button>
+			</div>
+		</div>
+	);
 }

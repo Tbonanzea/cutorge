@@ -15,6 +15,8 @@ export interface QuotingFile {
 	filename: string;
 	filepath: string;
 	filetype: 'DXF' | 'OTHER';
+	_rawFile?: File; // Raw File object for deferred upload
+	_blobUrl?: string; // Blob URL for preview before S3 upload
 }
 
 export interface QuotingMaterial {
@@ -50,6 +52,7 @@ export interface QuotingCart {
 	id?: string;
 	userId?: string;
 	items: QuotingCartItem[];
+	extras: string[]; // Array of extra service IDs
 }
 
 export interface QuotingStep {
@@ -77,6 +80,7 @@ type Action =
 			payload: { index: number; item: Partial<QuotingCartItem> };
 	  }
 	| { type: 'REMOVE_ITEM'; payload: number }
+	| { type: 'SET_EXTRAS'; payload: string[] }
 	| { type: 'MARK_STEP'; payload: { stepId: string; completed: boolean } }
 	| { type: 'SET_LOADING'; payload: boolean }
 	| { type: 'SET_ERROR'; payload: { field: string; error: string } }
@@ -117,7 +121,7 @@ const steps: QuotingStep[] = [
 const initialState: State = {
 	currentStep: 0,
 	steps: steps,
-	cart: { items: [] },
+	cart: { items: [], extras: [] },
 	isLoading: false,
 	errors: {},
 };
@@ -155,6 +159,15 @@ function reducer(state: State, action: Action): State {
 					items: state.cart.items.filter(
 						(_, i) => i !== action.payload
 					),
+				},
+			};
+
+		case 'SET_EXTRAS':
+			return {
+				...state,
+				cart: {
+					...state.cart,
+					extras: action.payload,
 				},
 			};
 
@@ -202,6 +215,7 @@ interface QuotingContextType extends State {
 	updateItem: (index: number, item: Partial<QuotingCartItem>) => void;
 	removeItem: (index: number) => void;
 	clearCart: () => void;
+	setExtras: (extras: string[]) => void;
 	markStep: (id: string, completed?: boolean) => void;
 	setLoading: (v: boolean) => void;
 	setError: (field: string, error: string) => void;
@@ -264,7 +278,10 @@ function useQuotingInternal(): QuotingContextType {
 		dispatch({ type: 'REMOVE_ITEM', payload: index });
 
 	const clearCart = () =>
-		dispatch({ type: 'SET_CART', payload: { items: [] } });
+		dispatch({ type: 'SET_CART', payload: { items: [], extras: [] } });
+
+	const setExtras = (extras: string[]) =>
+		dispatch({ type: 'SET_EXTRAS', payload: extras });
 
 	const markStep = (id: string, completed = true) =>
 		dispatch({ type: 'MARK_STEP', payload: { stepId: id, completed } });
@@ -338,6 +355,7 @@ function useQuotingInternal(): QuotingContextType {
 		updateItem,
 		removeItem,
 		clearCart,
+		setExtras,
 		markStep,
 		setLoading,
 		setError,

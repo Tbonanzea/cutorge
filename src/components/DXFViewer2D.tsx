@@ -4,17 +4,19 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import * as THREE from 'three';
 import { OrbitControls, Line2, LineGeometry, LineMaterial } from 'three-stdlib';
 
-interface DXFViewerSimpleProps {
+interface DXFViewer2DProps {
 	dxfUrl?: string;
 	className?: string;
+	showControls?: boolean; // Whether to show file upload and control buttons
 }
 
 const LINE_WIDTH = 2; // Line width in pixels
 
-export default function DXFViewerSimple({
+export default function DXFViewer2D({
 	dxfUrl,
 	className = '',
-}: DXFViewerSimpleProps) {
+	showControls = true,
+}: DXFViewer2DProps) {
 	const containerRef = useRef<HTMLDivElement>(null);
 	const sceneRef = useRef<THREE.Scene | null>(null);
 	const cameraRef = useRef<THREE.OrthographicCamera | null>(null);
@@ -706,49 +708,51 @@ export default function DXFViewerSimple({
 
 	return (
 		<div className={`flex flex-col gap-4 ${className}`}>
-			<div className='flex flex-wrap gap-4 items-center'>
-				<div className='flex gap-2'>
-					<input
-						type='file'
-						accept='.dxf'
-						onChange={handleFileSelect}
-						className='block text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100'
-					/>
-					<button
-						onClick={handleClear}
-						disabled={!selectedFile && !dxfUrl}
-						className='px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 disabled:bg-gray-300 disabled:cursor-not-allowed'
-					>
-						Clear
-					</button>
-					<button
-						onClick={handleReset}
-						className='px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600'
-					>
-						Reset View
-					</button>
-				</div>
-				{(selectedFile || entityCount > 0) && (
-					<span className='text-sm text-gray-600'>
-						{selectedFile?.name || 'Loaded file'}
-						{entityCount > 0 && (
-							<span className='ml-2 px-2 py-0.5 bg-green-100 text-green-700 rounded'>
-								{entityCount} entities
-							</span>
-						)}
-					</span>
-				)}
-				{dimensions && (
-					<div className='flex gap-3 text-sm'>
-						<span className='px-2 py-0.5 bg-blue-100 text-blue-700 rounded'>
-							W: {dimensions.width.toFixed(2)} mm
-						</span>
-						<span className='px-2 py-0.5 bg-blue-100 text-blue-700 rounded'>
-							H: {dimensions.height.toFixed(2)} mm
-						</span>
+			{showControls && (
+				<div className='flex flex-wrap gap-4 items-center'>
+					<div className='flex gap-2'>
+						<input
+							type='file'
+							accept='.dxf'
+							onChange={handleFileSelect}
+							className='block text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100'
+						/>
+						<button
+							onClick={handleClear}
+							disabled={!selectedFile && !dxfUrl}
+							className='px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 disabled:bg-gray-300 disabled:cursor-not-allowed'
+						>
+							Clear
+						</button>
+						<button
+							onClick={handleReset}
+							className='px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600'
+						>
+							Reset View
+						</button>
 					</div>
-				)}
-			</div>
+					{(selectedFile || entityCount > 0) && (
+						<span className='text-sm text-gray-600'>
+							{selectedFile?.name || 'Loaded file'}
+							{entityCount > 0 && (
+								<span className='ml-2 px-2 py-0.5 bg-green-100 text-green-700 rounded'>
+									{entityCount} entities
+								</span>
+							)}
+						</span>
+					)}
+					{dimensions && (
+						<div className='flex gap-3 text-sm'>
+							<span className='px-2 py-0.5 bg-blue-100 text-blue-700 rounded'>
+								W: {dimensions.width.toFixed(2)} mm
+							</span>
+							<span className='px-2 py-0.5 bg-blue-100 text-blue-700 rounded'>
+								H: {dimensions.height.toFixed(2)} mm
+							</span>
+						</div>
+					)}
+				</div>
+			)}
 
 			{error && (
 				<div className='p-4 bg-red-50 border border-red-200 rounded-md'>
@@ -781,18 +785,20 @@ export default function DXFViewerSimple({
 			<div
 				ref={containerRef}
 				className='w-full border border-gray-300 rounded-md overflow-hidden bg-gray-100'
-				style={{ minHeight: '600px' }}
+				style={{ minHeight: '400px' }}
 			/>
 
-			<div className='text-sm text-gray-600 space-y-1'>
-				<p>
-					<strong>Controls:</strong>
-				</p>
-				<ul className='list-disc list-inside ml-4'>
-					<li>Left click + drag: Pan</li>
-					<li>Mouse wheel: Zoom</li>
-				</ul>
-			</div>
+			{showControls && (
+				<div className='text-sm text-gray-600 space-y-1'>
+					<p>
+						<strong>Controls:</strong>
+					</p>
+					<ul className='list-disc list-inside ml-4'>
+						<li>Left click + drag: Pan</li>
+						<li>Mouse wheel: Zoom</li>
+					</ul>
+				</div>
+			)}
 		</div>
 	);
 }

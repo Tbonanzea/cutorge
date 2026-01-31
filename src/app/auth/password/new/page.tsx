@@ -3,13 +3,14 @@ import { Card, CardContent, CardTitle } from '@/components/ui/card';
 import { redirect } from 'next/navigation';
 
 interface NewPasswordPageProps {
-	searchParams: { [key: string]: string | string[] | undefined };
+	searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }
 
 export default async function NewPasswordPage({
 	searchParams,
 }: NewPasswordPageProps) {
-	const { emailRedirectTo } = await searchParams;
+	const params = await searchParams;
+	const { emailRedirectTo } = params;
 
 	if (!emailRedirectTo) {
 		const error = new Error('No se ha especificado una URL para redirigir');
