@@ -2,6 +2,7 @@
 
 import { useQuoting } from '@/context/quotingContext';
 import { useSubmitQuote } from '@/hooks/useSubmitQuote';
+import { useExtraServices, calculateExtrasTotal } from '@/hooks/useExtraServices';
 import { Button } from '@/components/ui/button';
 import {
 	Card,
@@ -14,11 +15,11 @@ import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { CheckCircle2, FileText, Plus, Loader2 } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { EXTRA_SERVICES, calculateExtrasTotal } from '@/lib/constants';
 
 export default function ReviewPage() {
 	const { cart, prevStep, goToStep } = useQuoting();
 	const { mutate: submitQuote, isPending, error } = useSubmitQuote();
+	const { data: extraServices = [], isLoading: loadingExtras } = useExtraServices();
 
 	// Calculate material subtotal
 	const materialSubtotal = cart.items.reduce((total, item) => {
@@ -29,7 +30,7 @@ export default function ReviewPage() {
 	}, 0);
 
 	// Calculate extras total
-	const extrasTotal = calculateExtrasTotal(cart.extras || []);
+	const extrasTotal = calculateExtrasTotal(cart.extras || [], extraServices);
 
 	// Grand total
 	const grandTotal = materialSubtotal + extrasTotal;
@@ -57,7 +58,7 @@ export default function ReviewPage() {
 	};
 
 	return (
-		<div className='space-y-6'>
+		<div className="space-y-6">
 			{/* Header */}
 			<Card>
 				<CardHeader>
@@ -71,66 +72,53 @@ export default function ReviewPage() {
 			{/* Files & Materials Summary */}
 			<Card>
 				<CardHeader>
-					<CardTitle className='flex items-center gap-2'>
-						<FileText className='h-5 w-5' />
+					<CardTitle className="flex items-center gap-2">
+						<FileText className="h-5 w-5" />
 						Archivos y Materiales
 					</CardTitle>
 				</CardHeader>
 				<CardContent>
-					<div className='space-y-4'>
+					<div className="space-y-4">
 						{cart.items.map((item, idx) => (
 							<div
 								key={`${item.file.id}-${idx}`}
-								className='p-4 border rounded-lg bg-slate-50'
+								className="p-4 border rounded-lg bg-slate-50"
 							>
-								<div className='flex items-start justify-between'>
-									<div className='flex-1'>
-										<div className='flex items-center gap-2 mb-2'>
-											<CheckCircle2 className='h-4 w-4 text-green-600' />
-											<h4 className='font-semibold'>
+								<div className="flex items-start justify-between">
+									<div className="flex-1">
+										<div className="flex items-center gap-2 mb-2">
+											<CheckCircle2 className="h-4 w-4 text-green-600" />
+											<h4 className="font-semibold">
 												{item.file.filename}
 											</h4>
 										</div>
-										<div className='grid grid-cols-1 md:grid-cols-3 gap-2 text-sm text-muted-foreground'>
+										<div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-sm text-muted-foreground">
 											<div>
-												<span className='font-medium'>
-													Material:
-												</span>{' '}
+												<span className="font-medium">Material:</span>{' '}
 												{item.material?.name || 'N/A'}
 											</div>
 											<div>
-												<span className='font-medium'>
-													Espesor:
-												</span>{' '}
+												<span className="font-medium">Espesor:</span>{' '}
 												{item.materialType?.height || 0}mm
 											</div>
 											<div>
-												<span className='font-medium'>
-													Cantidad:
-												</span>{' '}
+												<span className="font-medium">Cantidad:</span>{' '}
 												{item.quantity}{' '}
-												{item.quantity === 1
-													? 'pieza'
-													: 'piezas'}
+												{item.quantity === 1 ? 'pieza' : 'piezas'}
 											</div>
 										</div>
 									</div>
-									<div className='text-right ml-4'>
-										<p className='text-lg font-semibold text-green-600'>
+									<div className="text-right ml-4">
+										<p className="text-lg font-semibold text-green-600">
 											$
 											{item.materialType
 												? (
-														item.materialType
-															.pricePerUnit *
-														item.quantity
+														item.materialType.pricePerUnit * item.quantity
 												  ).toFixed(2)
 												: '0.00'}
 										</p>
-										<p className='text-xs text-muted-foreground'>
-											$
-											{item.materialType?.pricePerUnit.toFixed(
-												2
-											) || '0.00'}{' '}
+										<p className="text-xs text-muted-foreground">
+											${item.materialType?.pricePerUnit.toFixed(2) || '0.00'}{' '}
 											× {item.quantity}
 										</p>
 									</div>
@@ -139,32 +127,27 @@ export default function ReviewPage() {
 						))}
 					</div>
 
-					<Separator className='my-4' />
+					<Separator className="my-4" />
 
-					<div className='flex justify-between items-center'>
+					<div className="flex justify-between items-center">
 						<div>
-							<p className='text-sm text-muted-foreground'>
-								Total de archivos
-							</p>
-							<p className='text-lg font-semibold'>
-								{cart.items.length} archivo
-								{cart.items.length !== 1 && 's'}
+							<p className="text-sm text-muted-foreground">Total de archivos</p>
+							<p className="text-lg font-semibold">
+								{cart.items.length} archivo{cart.items.length !== 1 && 's'}
 							</p>
 						</div>
-						<div className='text-right'>
-							<p className='text-sm text-muted-foreground'>
-								Subtotal materiales
-							</p>
-							<p className='text-xl font-semibold text-green-600'>
+						<div className="text-right">
+							<p className="text-sm text-muted-foreground">Subtotal materiales</p>
+							<p className="text-xl font-semibold text-green-600">
 								${materialSubtotal.toFixed(2)}
 							</p>
 						</div>
 					</div>
 
-					<div className='mt-4 flex justify-end'>
+					<div className="mt-4 flex justify-end">
 						<Button
-							variant='outline'
-							size='sm'
+							variant="outline"
+							size="sm"
 							onClick={() => goToStep('material-selection')}
 						>
 							Editar materiales
@@ -176,39 +159,39 @@ export default function ReviewPage() {
 			{/* Extras Summary */}
 			<Card>
 				<CardHeader>
-					<CardTitle className='flex items-center gap-2'>
-						<Plus className='h-5 w-5' />
+					<CardTitle className="flex items-center gap-2">
+						<Plus className="h-5 w-5" />
 						Servicios Adicionales
 					</CardTitle>
 				</CardHeader>
 				<CardContent>
-					{cart.extras && cart.extras.length > 0 ? (
+					{loadingExtras ? (
+						<div className="flex items-center justify-center py-8">
+							<Loader2 className="h-6 w-6 animate-spin text-gray-500" />
+						</div>
+					) : cart.extras && cart.extras.length > 0 ? (
 						<>
-							<div className='space-y-3'>
+							<div className="space-y-3">
 								{cart.extras.map((extraId) => {
-									const service = EXTRA_SERVICES.find(
-										(s) => s.id === extraId
-									);
+									const service = extraServices.find((s) => s.id === extraId);
 									if (!service) return null;
 
 									return (
 										<div
 											key={extraId}
-											className='flex justify-between items-center p-3 border rounded-md bg-blue-50'
+											className="flex justify-between items-center p-3 border rounded-md bg-blue-50"
 										>
 											<div>
-												<p className='font-medium'>
-													{service.name}
-												</p>
-												<p className='text-xs text-muted-foreground'>
+												<p className="font-medium">{service.name}</p>
+												<p className="text-xs text-muted-foreground">
 													{service.description}
 												</p>
 											</div>
-											<div className='text-right'>
-												<p className='font-semibold text-green-600'>
+											<div className="text-right">
+												<p className="font-semibold text-green-600">
 													${service.price}
 												</p>
-												<p className='text-xs text-muted-foreground'>
+												<p className="text-xs text-muted-foreground">
 													{service.unit}
 												</p>
 											</div>
@@ -217,27 +200,25 @@ export default function ReviewPage() {
 								})}
 							</div>
 
-							<Separator className='my-4' />
+							<Separator className="my-4" />
 
-							<div className='flex justify-between items-center'>
-								<p className='text-sm text-muted-foreground'>
-									Total extras
-								</p>
-								<p className='text-xl font-semibold text-green-600'>
+							<div className="flex justify-between items-center">
+								<p className="text-sm text-muted-foreground">Total extras</p>
+								<p className="text-xl font-semibold text-green-600">
 									${extrasTotal.toFixed(2)}
 								</p>
 							</div>
 						</>
 					) : (
-						<div className='text-center py-8 text-muted-foreground'>
+						<div className="text-center py-8 text-muted-foreground">
 							<p>No se seleccionaron servicios adicionales</p>
 						</div>
 					)}
 
-					<div className='mt-4 flex justify-end'>
+					<div className="mt-4 flex justify-end">
 						<Button
-							variant='outline'
-							size='sm'
+							variant="outline"
+							size="sm"
 							onClick={() => goToStep('extras')}
 						>
 							{cart.extras && cart.extras.length > 0
@@ -249,41 +230,34 @@ export default function ReviewPage() {
 			</Card>
 
 			{/* Grand Total */}
-			<Card className='border-2 border-primary'>
-				<CardContent className='pt-6'>
-					<div className='space-y-4'>
-						<div className='flex justify-between items-center text-lg'>
-							<span className='text-muted-foreground'>
-								Subtotal materiales
-							</span>
-							<span className='font-semibold'>
-								${materialSubtotal.toFixed(2)}
-							</span>
+			<Card className="border-2 border-primary">
+				<CardContent className="pt-6">
+					<div className="space-y-4">
+						<div className="flex justify-between items-center text-lg">
+							<span className="text-muted-foreground">Subtotal materiales</span>
+							<span className="font-semibold">${materialSubtotal.toFixed(2)}</span>
 						</div>
 
 						{extrasTotal > 0 && (
-							<div className='flex justify-between items-center text-lg'>
-								<span className='text-muted-foreground'>
+							<div className="flex justify-between items-center text-lg">
+								<span className="text-muted-foreground">
 									Servicios adicionales
 								</span>
-								<span className='font-semibold'>
-									${extrasTotal.toFixed(2)}
-								</span>
+								<span className="font-semibold">${extrasTotal.toFixed(2)}</span>
 							</div>
 						)}
 
 						<Separator />
 
-						<div className='flex justify-between items-center'>
+						<div className="flex justify-between items-center">
 							<div>
-								<p className='text-2xl font-bold'>Total</p>
-								<p className='text-sm text-muted-foreground'>
-									{totalItemsCount} pieza
-									{totalItemsCount !== 1 && 's'} · {cart.items.length}{' '}
-									archivo{cart.items.length !== 1 && 's'}
+								<p className="text-2xl font-bold">Total</p>
+								<p className="text-sm text-muted-foreground">
+									{totalItemsCount} pieza{totalItemsCount !== 1 && 's'} ·{' '}
+									{cart.items.length} archivo{cart.items.length !== 1 && 's'}
 								</p>
 							</div>
-							<p className='text-3xl font-bold text-green-600'>
+							<p className="text-3xl font-bold text-green-600">
 								${grandTotal.toFixed(2)}
 							</p>
 						</div>
@@ -292,22 +266,22 @@ export default function ReviewPage() {
 			</Card>
 
 			{/* Actions */}
-			<Card className='bg-slate-50'>
-				<CardContent className='pt-6'>
-					<div className='space-y-4'>
+			<Card className="bg-slate-50">
+				<CardContent className="pt-6">
+					<div className="space-y-4">
 						{error && (
-							<Alert variant='destructive'>
+							<Alert variant="destructive">
 								<AlertDescription>
 									Error al enviar cotización: {error.message}
 								</AlertDescription>
 							</Alert>
 						)}
 
-						<div className='flex items-start gap-3'>
-							<Badge variant='outline' className='mt-1'>
+						<div className="flex items-start gap-3">
+							<Badge variant="outline" className="mt-1">
 								Nota
 							</Badge>
-							<p className='text-sm text-muted-foreground'>
+							<p className="text-sm text-muted-foreground">
 								Esta es una cotización preliminar. El precio final
 								puede variar según la complejidad del diseño y la
 								disponibilidad de materiales. Nos pondremos en
@@ -317,23 +291,19 @@ export default function ReviewPage() {
 
 						<Separator />
 
-						<div className='flex justify-between gap-4'>
-							<Button
-								variant='outline'
-								onClick={prevStep}
-								disabled={isPending}
-							>
+						<div className="flex justify-between gap-4">
+							<Button variant="outline" onClick={prevStep} disabled={isPending}>
 								Volver
 							</Button>
 							<Button
-								size='lg'
+								size="lg"
 								disabled={!canSubmit || isPending}
 								onClick={handleSubmit}
-								className='min-w-[200px]'
+								className="min-w-[200px]"
 							>
 								{isPending ? (
 									<>
-										<Loader2 className='mr-2 h-4 w-4 animate-spin' />
+										<Loader2 className="mr-2 h-4 w-4 animate-spin" />
 										Enviando...
 									</>
 								) : (

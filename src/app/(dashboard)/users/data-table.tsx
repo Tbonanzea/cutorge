@@ -51,7 +51,6 @@ export function DataTable<TData>({
 
 	const handlePageChange = (newPage: number) => {
 		if (newPage < 1 || newPage > totalPages) return;
-		const url = new URL(baseUrl, window.location.origin);
 		const currentParams = new URLSearchParams(window.location.search);
 		currentParams.set('page', String(newPage));
 		router.push(`${baseUrl}?${currentParams.toString()}`);

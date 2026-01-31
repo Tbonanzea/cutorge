@@ -116,6 +116,7 @@ model Order {
   createdAt DateTime    @default(now())
   updatedAt DateTime    @updatedAt
   items     OrderItem[]
+  extras    OrderExtra[]
   payments  Payment[]
   shipments Shipment[]
 
@@ -190,6 +191,32 @@ model CutType {
   description  String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+}
+
+model ExtraService {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String?
+  price       Float
+  unit        String   // "por pieza", "por proyecto", "por pedido"
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  orderExtras OrderExtra[]
+}
+
+model OrderExtra {
+  id             String   @id @default(uuid())
+  orderId        String
+  extraServiceId String
+  quantity       Int      @default(1)
+  priceAtOrder   Float    // Precio al momento de la orden (puede cambiar después)
+
+  order        Order        @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  extraService ExtraService @relation(fields: [extraServiceId], references: [id])
+
+  @@unique([orderId, extraServiceId])
 }
 
 // Enums

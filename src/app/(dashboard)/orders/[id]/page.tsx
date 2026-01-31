@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
-import { getOrderById, updateOrderStatus } from '../actions';
+import { useParams } from 'next/navigation';
+import { getOrderById, updateOrderStatus, OrderWithDetails } from '../actions';
 import { OrderStatus } from '@prisma/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -20,12 +20,6 @@ import { ArrowLeft, ExternalLink, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { formatDistanceToNow, format } from 'date-fns';
 import { es } from 'date-fns/locale';
-
-type OrderDetail = Awaited<ReturnType<typeof getOrderById>> extends {
-	order: infer T;
-}
-	? T
-	: never;
 
 const statusColors: Record<OrderStatus, string> = {
 	PENDING: 'bg-yellow-100 text-yellow-800',
@@ -57,8 +51,7 @@ const nextStatusLabels: Record<string, string> = {
 
 export default function OrderDetailPage() {
 	const params = useParams();
-	const router = useRouter();
-	const [order, setOrder] = useState<OrderDetail | null>(null);
+	const [order, setOrder] = useState<OrderWithDetails | null>(null);
 	const [loading, setLoading] = useState(true);
 	const [updating, setUpdating] = useState(false);
 	const [error, setError] = useState<string | null>(null);

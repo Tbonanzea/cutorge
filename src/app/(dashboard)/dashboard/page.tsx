@@ -22,7 +22,6 @@ import {
 import Link from 'next/link';
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { OrderStatus } from '@prisma/client';
 
 const statusColors: Record<string, string> = {
 	PENDING: 'bg-yellow-100 text-yellow-800',

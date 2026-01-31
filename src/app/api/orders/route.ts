@@ -6,7 +6,6 @@ import {
 	sendCustomerConfirmationEmail,
 	sendAdminNotificationEmail,
 } from '@/lib/email';
-import { getExtraServiceById } from '@/lib/constants';
 
 /**
  * Zod schema for file data
@@ -33,12 +32,12 @@ const OrderItemSchema = z.object({
  */
 const CreateOrderSchema = z.object({
 	items: z.array(OrderItemSchema).min(1, 'At least one item is required'),
-	extras: z.array(z.string()).optional(),
+	extras: z.array(z.string().uuid()).optional(), // Array of ExtraService IDs
 });
 
 /**
  * POST /api/orders
- * Create a new order with items
+ * Create a new order with items and extras
  */
 export async function POST(request: NextRequest) {
 	try {
@@ -59,11 +58,34 @@ export async function POST(request: NextRequest) {
 		const body = await request.json();
 		const validatedData = CreateOrderSchema.parse(body);
 
-		// Calculate total price
-		const totalPrice = validatedData.items.reduce(
+		// Calculate items total price
+		const itemsTotal = validatedData.items.reduce(
 			(sum, item) => sum + item.price * item.quantity,
 			0
 		);
+
+		// Fetch extras from database and calculate extras total
+		let extrasTotal = 0;
+		let extraServices: { id: string; name: string; price: number }[] = [];
+
+		if (validatedData.extras && validatedData.extras.length > 0) {
+			extraServices = await prisma.extraService.findMany({
+				where: {
+					id: { in: validatedData.extras },
+					isActive: true,
+				},
+				select: {
+					id: true,
+					name: true,
+					price: true,
+				},
+			});
+
+			extrasTotal = extraServices.reduce((sum, extra) => sum + extra.price, 0);
+		}
+
+		// Total price = items + extras
+		const totalPrice = itemsTotal + extrasTotal;
 
 		// Process items: create File records if needed
 		const processedItems = await Promise.all(
@@ -96,7 +118,7 @@ export async function POST(request: NextRequest) {
 			})
 		);
 
-		// Create order with items in a transaction
+		// Create order with items and extras in a transaction
 		const order = await prisma.order.create({
 			data: {
 				userId: user.id,
@@ -104,6 +126,13 @@ export async function POST(request: NextRequest) {
 				totalPrice,
 				items: {
 					create: processedItems,
+				},
+				extras: {
+					create: extraServices.map((extra) => ({
+						extraServiceId: extra.id,
+						quantity: 1,
+						priceAtOrder: extra.price,
+					})),
 				},
 			},
 			include: {
@@ -115,6 +144,11 @@ export async function POST(request: NextRequest) {
 								material: true,
 							},
 						},
+					},
+				},
+				extras: {
+					include: {
+						extraService: true,
 					},
 				},
 				user: {
@@ -142,11 +176,7 @@ export async function POST(request: NextRequest) {
 				quantity: item.quantity,
 				price: item.price,
 			})),
-			extras: validatedData.extras
-				? validatedData.extras
-						.map((id) => getExtraServiceById(id)?.name)
-						.filter(Boolean) as string[]
-				: undefined,
+			extras: order.extras.map((e) => e.extraService.name),
 		};
 
 		// Send emails asynchronously (don't block response)
@@ -260,6 +290,11 @@ export async function GET(request: NextRequest) {
 									material: true,
 								},
 							},
+						},
+					},
+					extras: {
+						include: {
+							extraService: true,
 						},
 					},
 					_count: {

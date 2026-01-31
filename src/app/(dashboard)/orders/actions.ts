@@ -1,8 +1,32 @@
 'use server';
 
 import prisma from '@/lib/prisma';
-import { OrderStatus } from '@prisma/client';
+import { OrderStatus, Prisma } from '@prisma/client';
 import { revalidatePath } from 'next/cache';
+
+// Type for order with all details
+export type OrderWithDetails = Prisma.OrderGetPayload<{
+	include: {
+		user: {
+			select: {
+				id: true;
+				email: true;
+				firstName: true;
+				lastName: true;
+			};
+		};
+		items: {
+			include: {
+				file: true;
+				materialType: {
+					include: {
+						material: true;
+					};
+				};
+			};
+		};
+	};
+}>;
 
 /**
  * Get paginated orders with filters

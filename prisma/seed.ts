@@ -5,10 +5,17 @@ const prisma = new PrismaClient();
 async function main() {
 	console.log('🌱 Starting database seeding...');
 
-	// Delete existing data (in reverse order of dependencies)
-	console.log('🗑️  Clearing existing data...');
-	await prisma.materialType.deleteMany();
-	await prisma.material.deleteMany();
+	// Check if there are existing orders (to avoid breaking foreign keys)
+	const orderCount = await prisma.order.count();
+
+	if (orderCount === 0) {
+		// Safe to delete materials if no orders exist
+		console.log('🗑️  Clearing existing materials...');
+		await prisma.materialType.deleteMany();
+		await prisma.material.deleteMany();
+	} else {
+		console.log(`⚠️  Skipping material deletion - ${orderCount} orders exist`);
+	}
 
 	console.log('📦 Seeding materials and material types...');
 
@@ -241,9 +248,66 @@ async function main() {
 		},
 	});
 
+	// Extra Services (upsert to avoid conflicts)
+	console.log('🔧 Seeding extra services...');
+
+	const extraServices = [
+		{
+			name: 'Grabado láser',
+			description: 'Personaliza tu pieza con texto o diseños grabados',
+			price: 15,
+			unit: 'por pieza',
+			isActive: true,
+		},
+		{
+			name: 'Pintura/Acabado',
+			description: 'Aplicación de pintura o acabados especiales',
+			price: 25,
+			unit: 'por pieza',
+			isActive: true,
+		},
+		{
+			name: 'Ensamblaje',
+			description: 'Armado de piezas múltiples',
+			price: 50,
+			unit: 'por proyecto',
+			isActive: true,
+		},
+		{
+			name: 'Entrega Express',
+			description: 'Entrega en 24-48 horas',
+			price: 100,
+			unit: 'por pedido',
+			isActive: true,
+		},
+		{
+			name: 'Empaque Especial',
+			description: 'Empaque personalizado para presentación',
+			price: 20,
+			unit: 'por pedido',
+			isActive: true,
+		},
+		{
+			name: 'Revisión de Diseño',
+			description: 'Análisis y optimización del diseño para corte',
+			price: 75,
+			unit: 'por proyecto',
+			isActive: true,
+		},
+	];
+
+	for (const extra of extraServices) {
+		await prisma.extraService.upsert({
+			where: { name: extra.name },
+			update: extra,
+			create: extra,
+		});
+	}
+
 	console.log('✅ Seeding complete!');
 	console.log(`   - Created ${await prisma.material.count()} materials`);
 	console.log(`   - Created ${await prisma.materialType.count()} material types`);
+	console.log(`   - Created ${await prisma.extraService.count()} extra services`);
 }
 
 main()

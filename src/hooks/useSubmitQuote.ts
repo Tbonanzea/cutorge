@@ -3,7 +3,6 @@
 import { useMutation } from '@tanstack/react-query';
 import { useQuoting } from '@/context/quotingContext';
 import { useRouter } from 'next/navigation';
-import { calculateExtrasTotal } from '@/lib/constants';
 
 interface SubmitQuoteResponse {
 	orderId: string;
@@ -107,18 +106,6 @@ export function useSubmitQuote() {
 			const uploadedItems = await Promise.all(uploadPromises);
 
 			// Step 2: Create order via API
-			const totalPrice = uploadedItems.reduce((sum, item) => {
-				return (
-					sum + (item.materialType?.pricePerUnit || 0) * item.quantity
-				);
-			}, 0);
-
-			// Add extras to total
-			const extrasTotal = calculateExtrasTotal(cart.extras || []);
-
-			// Calculate grand total (used for order total)
-			const _grandTotal = totalPrice + extrasTotal;
-
 			// Prepare order items for API
 			const orderItems = uploadedItems.map((item) => ({
 				fileData: {

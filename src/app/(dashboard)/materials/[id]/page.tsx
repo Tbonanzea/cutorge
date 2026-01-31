@@ -1,12 +1,11 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Separator } from '@/components/ui/separator';
 import {
 	Table,
 	TableBody,
@@ -21,7 +20,6 @@ import {
 	getMaterialById,
 	updateMaterial,
 	createMaterialType,
-	updateMaterialType,
 	deleteMaterialType,
 } from '../actions';
 import { MaterialType } from '@prisma/client';
@@ -30,7 +28,6 @@ type MaterialWithTypes = Awaited<ReturnType<typeof getMaterialById>>;
 
 export default function EditMaterialPage() {
 	const params = useParams();
-	const router = useRouter();
 	const materialId = params.id as string;
 
 	const [material, setMaterial] = useState<MaterialWithTypes | null>(null);
