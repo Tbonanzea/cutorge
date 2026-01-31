@@ -1,6 +1,5 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
-import { PrismaClient } from '@prisma/client';
 
 const publicRoutes = [
 	'/',
@@ -12,9 +11,6 @@ const publicRoutes = [
 	'/auth/callback',
 	'/dxf-test', // Test page for DXF viewer
 ];
-
-// Routes that require ADMIN role
-const adminRoutes = ['/users', '/materials', '/orders', '/extras'];
 
 export async function updateSession(request: NextRequest) {
 	let supabaseResponse = NextResponse.next({
@@ -61,33 +57,8 @@ export async function updateSession(request: NextRequest) {
 		return NextResponse.redirect(url);
 	}
 
-	// Check admin role for admin routes
-	if (user) {
-		const pathname = request.nextUrl.pathname;
-		const isAdminRoute = adminRoutes.some((route) =>
-			pathname.startsWith(route)
-		);
-
-		if (isAdminRoute) {
-			// Query Prisma to get user role
-			const prisma = new PrismaClient();
-			try {
-				const dbUser = await prisma.user.findUnique({
-					where: { id: user.id },
-					select: { role: true },
-				});
-
-				if (!dbUser || dbUser.role !== 'ADMIN') {
-					// User is not admin, redirect to home or unauthorized page
-					const url = request.nextUrl.clone();
-					url.pathname = '/';
-					return NextResponse.redirect(url);
-				}
-			} finally {
-				await prisma.$disconnect();
-			}
-		}
-	}
+	// Note: Admin role verification is done in the dashboard layout
+	// because Prisma cannot run in Edge Runtime (middleware)
 
 	// IMPORTANT: You *must* return the supabaseResponse object as it is.
 	// If you're creating a new response object with NextResponse.next() make sure to:

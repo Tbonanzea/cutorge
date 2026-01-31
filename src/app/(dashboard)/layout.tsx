@@ -2,6 +2,9 @@
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
+import { createClient } from '@/lib/supabase/server';
+import prisma from '@/lib/prisma';
+import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import React from 'react';
 import {
@@ -13,11 +16,28 @@ import {
 	User,
 } from 'lucide-react';
 
-export default function DashboardLayout({
+export default async function DashboardLayout({
 	children,
 }: {
 	children: React.ReactNode;
 }) {
+	// Verify user is authenticated and has ADMIN role
+	const supabase = await createClient();
+	const { data: { user } } = await supabase.auth.getUser();
+
+	if (!user) {
+		redirect('/auth/login');
+	}
+
+	const dbUser = await prisma.user.findUnique({
+		where: { id: user.id },
+		select: { role: true },
+	});
+
+	if (!dbUser || dbUser.role !== 'ADMIN') {
+		redirect('/');
+	}
+
 	return (
 		<div className="flex min-h-screen">
 			<nav className="w-64 p-2 flex flex-col gap-2 border-r bg-gray-50/50">
