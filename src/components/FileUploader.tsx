@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { useCallback, useState, useEffect, useRef } from 'react';
 import { FileRejection, useDropzone } from 'react-dropzone';
+import { validateDXFFile } from '@/lib/dxf-validation';
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 const MAX_FILES = 5;
@@ -68,6 +69,7 @@ function FileUploader() {
 			clearCart();
 
 			const newErrors: { fileName: string; error: string }[] = [];
+			let validFilesCount = 0;
 
 			let processed = 0;
 			for (const file of acceptedFiles) {
@@ -77,44 +79,80 @@ function FileUploader() {
 						fileName: file.name,
 						error: 'Solo archivos .dxf permitidos.',
 					});
+					processed++;
+					setUploadProgress(
+						Math.round((processed / acceptedFiles.length) * 100)
+					);
 					continue;
 				}
-
-				// Simula upload y genera ID local (en prod lo traerías de la API)
-				await new Promise((res) => setTimeout(res, 300));
-				setUploadProgress(
-					Math.round(((processed + 1) / acceptedFiles.length) * 100)
-				);
 
 				// Generate blob URL for preview
 				const blobUrl = URL.createObjectURL(file);
 				blobUrlsRef.current.add(blobUrl); // Track for cleanup
 
-				// Crea un QuotingCartItem por archivo con blob URL y raw file
-				const quotingFile = {
-					id: crypto.randomUUID(),
-					filename: file.name,
-					filepath: '', // Will be set after S3 upload on submission
-					filetype: 'DXF' as const,
-					_rawFile: file, // Store raw File for later upload
-					_blobUrl: blobUrl, // Blob URL for preview
-				};
-				addItem({
-					file: quotingFile,
-					material: null,
-					materialType: null,
-					quantity: 1,
-					price: 0,
-				});
+				// Validate DXF file structure
+				const validationResult = await validateDXFFile(file);
+
+				setUploadProgress(
+					Math.round(((processed + 1) / acceptedFiles.length) * 100)
+				);
+
+				if (!validationResult.isValid) {
+					// File failed DXF validation
+					newErrors.push({
+						fileName: file.name,
+						error: `Archivo DXF inválido: ${validationResult.errors.join(', ')}`,
+					});
+
+					// Add to cart but mark as invalid
+					const quotingFile = {
+						id: crypto.randomUUID(),
+						filename: file.name,
+						filepath: '',
+						filetype: 'DXF' as const,
+						_rawFile: file,
+						_blobUrl: blobUrl,
+						_validationStatus: 'invalid' as const,
+						_validationErrors: validationResult.errors,
+					};
+					addItem({
+						file: quotingFile,
+						material: null,
+						materialType: null,
+						quantity: 1,
+						price: 0,
+					});
+				} else {
+					// File passed validation
+					validFilesCount++;
+					const quotingFile = {
+						id: crypto.randomUUID(),
+						filename: file.name,
+						filepath: '',
+						filetype: 'DXF' as const,
+						_rawFile: file,
+						_blobUrl: blobUrl,
+						_validationStatus: 'valid' as const,
+						_validationErrors: [],
+					};
+					addItem({
+						file: quotingFile,
+						material: null,
+						materialType: null,
+						quantity: 1,
+						price: 0,
+					});
+				}
+
 				processed++;
 			}
+
 			setUploadErrors(newErrors);
 			setUploadStatus(newErrors.length > 0 ? 'error' : 'success');
 			setIsUploading(false);
-			markStep(
-				'file-upload',
-				acceptedFiles.length - newErrors.length > 0
-			);
+
+			// Only mark step as complete if we have at least one VALID file
+			markStep('file-upload', validFilesCount > 0);
 		},
 		[addItem, clearCart, markStep]
 	);
@@ -229,33 +267,104 @@ function FileUploader() {
 							Archivos seleccionados:
 						</h4>
 						<div className='space-y-2'>
-							{cart.items.map((item, index) => (
-								<div
-									key={`${item.file.id}-${index}`}
-									className='flex items-center p-3 border rounded-md bg-muted/50'
-								>
-									<LucideFile className='h-5 w-5 mr-3 text-blue-500 flex-shrink-0' />
-									<div className='flex-1 min-w-0'>
-										<p className='font-medium truncate'>
-											{item.file.filename}
-										</p>
-										<p className='text-xs text-muted-foreground'>
-											{item.file.filetype}
-										</p>
-									</div>
-									<Button
-										variant='ghost'
-										size='icon'
-										className='h-8 w-8'
-										onClick={(e) => {
-											e.stopPropagation();
-											handleRemove(index);
-										}}
+							{cart.items.map((item, index) => {
+								const isValid =
+									item.file._validationStatus === 'valid';
+								const isInvalid =
+									item.file._validationStatus === 'invalid';
+
+								return (
+									<div
+										key={`${item.file.id}-${index}`}
+										className={`flex items-start p-3 border rounded-md ${
+											isValid
+												? 'bg-green-50 border-green-200'
+												: isInvalid
+												? 'bg-red-50 border-red-200'
+												: 'bg-muted/50'
+										}`}
 									>
-										<X className='h-4 w-4' />
-									</Button>
-								</div>
-							))}
+										{isValid ? (
+											<CheckCircle2 className='h-5 w-5 mr-3 text-green-600 flex-shrink-0 mt-0.5' />
+										) : isInvalid ? (
+											<AlertCircle className='h-5 w-5 mr-3 text-red-600 flex-shrink-0 mt-0.5' />
+										) : (
+											<LucideFile className='h-5 w-5 mr-3 text-blue-500 flex-shrink-0 mt-0.5' />
+										)}
+										<div className='flex-1 min-w-0'>
+											<p className='font-medium truncate'>
+												{item.file.filename}
+											</p>
+											<p
+												className={`text-xs ${
+													isValid
+														? 'text-green-700'
+														: isInvalid
+														? 'text-red-700'
+														: 'text-muted-foreground'
+												}`}
+											>
+												{isValid
+													? 'Archivo válido'
+													: isInvalid
+													? 'Archivo inválido'
+													: item.file.filetype}
+											</p>
+											{isInvalid &&
+												item.file._validationErrors &&
+												item.file._validationErrors
+													.length > 0 && (
+													<div className='mt-2 text-xs text-red-600'>
+														<p className='font-medium'>
+															Errores de validación:
+														</p>
+														<ul className='list-disc list-inside ml-2 mt-1'>
+															{item.file._validationErrors
+																.slice(0, 3)
+																.map(
+																	(
+																		err,
+																		errIdx
+																	) => (
+																		<li
+																			key={
+																				errIdx
+																			}
+																		>
+																			{err}
+																		</li>
+																	)
+																)}
+															{item.file
+																._validationErrors
+																.length > 3 && (
+																<li>
+																	...y{' '}
+																	{item.file
+																		._validationErrors
+																		.length -
+																		3}{' '}
+																	más
+																</li>
+															)}
+														</ul>
+													</div>
+												)}
+										</div>
+										<Button
+											variant='ghost'
+											size='icon'
+											className='h-8 w-8'
+											onClick={(e) => {
+												e.stopPropagation();
+												handleRemove(index);
+											}}
+										>
+											<X className='h-4 w-4' />
+										</Button>
+									</div>
+								);
+							})}
 						</div>
 					</div>
 				)}
@@ -317,6 +426,50 @@ function FileUploader() {
 										: 'Todos los archivos se subieron correctamente'}
 								</p>
 							</div>
+						</div>
+					</div>
+				)}
+
+				{/* Validation Summary */}
+				{cart.items.length > 0 && !isUploading && (
+					<div className='mt-6 p-4 bg-slate-100 rounded-md border border-slate-200'>
+						<h4 className='font-medium mb-2'>Resumen de validación</h4>
+						<div className='flex items-center justify-between text-sm'>
+							<div className='flex items-center gap-4'>
+								<div className='flex items-center gap-2'>
+									<CheckCircle2 className='h-4 w-4 text-green-600' />
+									<span>
+										{
+											cart.items.filter(
+												(item) =>
+													item.file._validationStatus ===
+													'valid'
+											).length
+										}{' '}
+										válidos
+									</span>
+								</div>
+								<div className='flex items-center gap-2'>
+									<AlertCircle className='h-4 w-4 text-red-600' />
+									<span>
+										{
+											cart.items.filter(
+												(item) =>
+													item.file._validationStatus ===
+													'invalid'
+											).length
+										}{' '}
+										inválidos
+									</span>
+								</div>
+							</div>
+							{cart.items.some(
+								(item) => item.file._validationStatus === 'invalid'
+							) && (
+								<p className='text-xs text-red-600 font-medium'>
+									Elimina los archivos inválidos para continuar
+								</p>
+							)}
 						</div>
 					</div>
 				)}

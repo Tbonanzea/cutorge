@@ -17,6 +17,8 @@ export interface QuotingFile {
 	filetype: 'DXF' | 'OTHER';
 	_rawFile?: File; // Raw File object for deferred upload
 	_blobUrl?: string; // Blob URL for preview before S3 upload
+	_validationStatus?: 'pending' | 'valid' | 'invalid'; // DXF validation status
+	_validationErrors?: string[]; // Validation error messages
 }
 
 export interface QuotingMaterial {
@@ -316,7 +318,9 @@ function useQuotingInternal(): QuotingContextType {
 				isValid =
 					state.cart.items.length > 0 &&
 					state.cart.items.every(
-						(item) => item.file.filetype === 'DXF'
+						(item) =>
+							item.file.filetype === 'DXF' &&
+							item.file._validationStatus === 'valid'
 					);
 				break;
 			case 'material-selection':

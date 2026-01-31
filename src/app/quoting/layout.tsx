@@ -92,6 +92,11 @@ function QuotingHeader() {
 					onClick={nextStep}
 					disabled={isLast || !canProceed(stepNumber + 1)}
 					className='flex items-center space-x-2 flex-shrink-0'
+					title={
+						!canProceed(stepNumber + 1)
+							? 'Completa el paso actual antes de continuar'
+							: ''
+					}
 				>
 					<span>{isLast ? 'Finalizar' : 'Siguiente'}</span>
 					<ChevronRight className='w-4 h-4' />

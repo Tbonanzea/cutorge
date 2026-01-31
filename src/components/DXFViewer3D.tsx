@@ -3,6 +3,7 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import * as THREE from 'three';
 import { OrbitControls, Line2, LineGeometry, LineMaterial } from 'three-stdlib';
+import { validateDXF } from '@/lib/dxf-validation';
 
 interface DXFViewer3DProps {
 	dxfUrl?: string;
@@ -193,159 +194,6 @@ export default function DXFViewer3D({
 		controlsRef.current.update();
 	}, []);
 
-	const validateDXF = (dxf: any): string[] => {
-		const errors: string[] = [];
-
-		if (
-			!dxf.entities ||
-			!Array.isArray(dxf.entities) ||
-			dxf.entities.length === 0
-		) {
-			errors.push('DXF file contains no valid entities');
-			return errors;
-		}
-
-		dxf.entities.forEach((entity: any, index: number) => {
-			if (!entity.type) {
-				errors.push(`Entity ${index + 1}: Missing entity type`);
-				return;
-			}
-
-			switch (entity.type) {
-				case 'LINE':
-					if (!entity.vertices || entity.vertices.length !== 2) {
-						errors.push(
-							`Entity ${index + 1} (LINE): Incomplete - must have exactly 2 vertices`
-						);
-					} else {
-						entity.vertices.forEach((v: any, vIndex: number) => {
-							if (v.x === undefined || v.y === undefined) {
-								errors.push(
-									`Entity ${index + 1} (LINE): Vertex ${vIndex + 1} has invalid coordinates`
-								);
-							}
-							if (isNaN(v.x) || isNaN(v.y)) {
-								errors.push(
-									`Entity ${index + 1} (LINE): Vertex ${vIndex + 1} has invalid numeric values`
-								);
-							}
-						});
-					}
-					break;
-
-				case 'LWPOLYLINE':
-				case 'POLYLINE':
-					if (!entity.vertices || entity.vertices.length < 2) {
-						errors.push(
-							`Entity ${index + 1} (${entity.type}): Incomplete - must have at least 2 vertices`
-						);
-					} else {
-						entity.vertices.forEach((v: any, vIndex: number) => {
-							if (v.x === undefined || v.y === undefined) {
-								errors.push(
-									`Entity ${index + 1} (${entity.type}): Vertex ${vIndex + 1} has invalid coordinates`
-								);
-							}
-							if (isNaN(v.x) || isNaN(v.y)) {
-								errors.push(
-									`Entity ${index + 1} (${entity.type}): Vertex ${vIndex + 1} has invalid numeric values`
-								);
-							}
-						});
-					}
-					break;
-
-				case 'CIRCLE':
-					if (
-						!entity.center ||
-						entity.center.x === undefined ||
-						entity.center.y === undefined
-					) {
-						errors.push(`Entity ${index + 1} (CIRCLE): Invalid center`);
-					}
-					if (
-						!entity.radius ||
-						entity.radius <= 0 ||
-						isNaN(entity.radius)
-					) {
-						errors.push(`Entity ${index + 1} (CIRCLE): Invalid radius`);
-					}
-					break;
-
-				case 'ARC':
-					if (
-						!entity.center ||
-						entity.center.x === undefined ||
-						entity.center.y === undefined
-					) {
-						errors.push(`Entity ${index + 1} (ARC): Invalid center`);
-					}
-					if (
-						!entity.radius ||
-						entity.radius <= 0 ||
-						isNaN(entity.radius)
-					) {
-						errors.push(`Entity ${index + 1} (ARC): Invalid radius`);
-					}
-					if (
-						entity.startAngle === undefined ||
-						entity.endAngle === undefined
-					) {
-						errors.push(
-							`Entity ${index + 1} (ARC): Invalid start or end angle`
-						);
-					}
-					if (isNaN(entity.startAngle) || isNaN(entity.endAngle)) {
-						errors.push(
-							`Entity ${index + 1} (ARC): Invalid numeric angle values`
-						);
-					}
-					break;
-
-				case 'SPLINE':
-					if (
-						!entity.controlPoints ||
-						entity.controlPoints.length < 2
-					) {
-						errors.push(
-							`Entity ${index + 1} (SPLINE): Insufficient control points`
-						);
-					}
-					break;
-
-				default:
-					// Unsupported types - just log to console
-					console.warn(`Unvalidated entity type: ${entity.type}`);
-			}
-		});
-
-		// Validate file extents
-		if (dxf.header && dxf.header.$EXTMIN && dxf.header.$EXTMAX) {
-			const extMin = dxf.header.$EXTMIN;
-			const extMax = dxf.header.$EXTMAX;
-
-			if (extMin.x >= extMax.x || extMin.y >= extMax.y) {
-				errors.push(
-					'DXF file has invalid extents - possible open or corrupt entities'
-				);
-			}
-
-			// Check for extreme values indicating problems
-			const extremeValue = 1e19;
-			if (
-				Math.abs(extMin.x) > extremeValue ||
-				Math.abs(extMin.y) > extremeValue ||
-				Math.abs(extMax.x) > extremeValue ||
-				Math.abs(extMax.y) > extremeValue
-			) {
-				errors.push(
-					'DXF file contains entities with extreme coordinates - file may be corrupt'
-				);
-			}
-		}
-
-		return errors;
-	};
 
 	const loadDXFFromPath = async (path: string) => {
 		if (!sceneRef.current) return;
@@ -387,10 +235,10 @@ export default function DXFViewer3D({
 			}
 
 			// Validate the DXF file - this blocks on errors
-			const errors = validateDXF(dxf);
-			if (errors.length > 0) {
-				setValidationErrors(errors);
-				const errorMessage = errors.join('\n• ');
+			const validationResult = validateDXF(dxf);
+			if (!validationResult.isValid) {
+				setValidationErrors(validationResult.errors);
+				const errorMessage = validationResult.errors.join('\n• ');
 				throw new Error(`Invalid DXF file:\n• ${errorMessage}`);
 			}
 
