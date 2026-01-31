@@ -6,9 +6,13 @@ import {
 	NavigationMenuLink,
 	NavigationMenuList,
 } from '@/components/ui/navigation-menu';
-import { SquareUser } from 'lucide-react';
+import { LayoutDashboard, SquareUser } from 'lucide-react';
 
-export default function NavBar() {
+interface NavBarProps {
+	isAdmin?: boolean;
+}
+
+export default function NavBar({ isAdmin = false }: NavBarProps) {
 	return (
 		<nav className='fixed top-0 left-0 w-full flex items-center justify-between h-16 px-4 border-b bg-background z-50'>
 			{/* Brand */}
@@ -41,6 +45,17 @@ export default function NavBar() {
 								Acerca de
 							</NavigationMenuLink>
 						</NavigationMenuItem>
+						{isAdmin && (
+							<NavigationMenuItem>
+								<NavigationMenuLink
+									className='px-3 py-2 font-medium text-sm flex items-center gap-1'
+									href='/dashboard'
+								>
+									<LayoutDashboard className='h-4 w-4' />
+									Admin
+								</NavigationMenuLink>
+							</NavigationMenuItem>
+						)}
 						<NavigationMenuItem>
 							{/* Logout */}
 							<Button variant='outline' onClick={signOut}>
