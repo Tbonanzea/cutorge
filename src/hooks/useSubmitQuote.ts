@@ -106,10 +106,7 @@ export function useSubmitQuote() {
 
 			const uploadedItems = await Promise.all(uploadPromises);
 
-			// Step 2: Create order via API (you'll need to create this endpoint)
-			// For now, we'll simulate the response
-			// TODO: Create /api/orders endpoint to handle order creation with Prisma
-
+			// Step 2: Create order via API
 			const totalPrice = uploadedItems.reduce((sum, item) => {
 				return (
 					sum + (item.materialType?.pricePerUnit || 0) * item.quantity
@@ -121,25 +118,49 @@ export function useSubmitQuote() {
 
 			const grandTotal = totalPrice + extrasTotal;
 
-			// Simulate API call (replace with actual API call)
-			await new Promise((resolve) => setTimeout(resolve, 1000));
+			// Prepare order items for API
+			const orderItems = uploadedItems.map((item) => ({
+				fileData: {
+					filename: item.file.filename,
+					filepath: item.file.filepath,
+					filetype: item.file.filetype,
+				},
+				materialTypeId: item.materialType!.id,
+				quantity: item.quantity,
+				price: item.materialType!.pricePerUnit,
+			}));
+
+			// Call orders API
+			const response = await fetch('/api/orders', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+				},
+				body: JSON.stringify({
+					items: orderItems,
+					extras: cart.extras,
+				}),
+			});
+
+			if (!response.ok) {
+				const error = await response.json();
+				throw new Error(error.error || 'Failed to create order');
+			}
+
+			const data = await response.json();
 
 			return {
-				orderId: crypto.randomUUID(),
-				totalPrice: grandTotal,
-				message: 'Cotización enviada exitosamente',
+				orderId: data.orderId,
+				totalPrice: data.totalPrice,
+				message: data.message || 'Cotización enviada exitosamente',
 			};
 		},
 		onSuccess: (data) => {
 			// Reset cart on success
 			reset();
 
-			// Redirect to success page or dashboard
-			// TODO: Create success page
-			console.log('Quote submitted successfully:', data);
-
-			// For now, redirect to quoting page
-			router.push('/quoting');
+			// Redirect to success page with order ID
+			router.push(`/quoting/success?orderId=${data.orderId}`);
 		},
 		onError: (error) => {
 			console.error('Error submitting quote:', error);
