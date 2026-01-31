@@ -22,6 +22,7 @@ import {
 	getCoreRowModel,
 	useReactTable,
 } from '@tanstack/react-table';
+import { useRouter } from 'next/navigation';
 
 interface DataTableProps<TData> {
 	columns: ColumnDef<TData, any>[];
@@ -36,6 +37,8 @@ export function DataTable<TData>({
 	currentPage,
 	totalPages,
 }: DataTableProps<TData>) {
+	const router = useRouter();
+
 	const table = useReactTable({
 		data,
 		columns,
@@ -43,8 +46,10 @@ export function DataTable<TData>({
 	});
 
 	const pageNumbers = Array.from({ length: totalPages }, (_, i) => i + 1);
-	const handlePageChange = (_newPage: number) => {
-		// Implementa la lógica para cambiar de página, por ejemplo, utilizando router.push
+
+	const handlePageChange = (newPage: number) => {
+		if (newPage < 1 || newPage > totalPages) return;
+		router.push(`/users?page=${newPage}`);
 	};
 
 	return (
