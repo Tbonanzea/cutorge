@@ -4,6 +4,14 @@ import { Card, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import Link from 'next/link';
 import React from 'react';
+import {
+	LayoutDashboard,
+	Users,
+	ShoppingCart,
+	Package,
+	Wrench,
+	User,
+} from 'lucide-react';
 
 export default function DashboardLayout({
 	children,
@@ -11,45 +19,93 @@ export default function DashboardLayout({
 	children: React.ReactNode;
 }) {
 	return (
-		<div className='flex'>
-			<nav className='w-60 p-2 flex flex-col gap-2'>
+		<div className="flex min-h-screen">
+			<nav className="w-64 p-2 flex flex-col gap-2 border-r bg-gray-50/50">
 				<Card>
-					<CardHeader>
-						<CardTitle>Menu</CardTitle>
+					<CardHeader className="pb-2">
+						<CardTitle className="text-lg">Admin Panel</CardTitle>
 					</CardHeader>
 					<Separator />
-					<ul className='px-2 flex flex-col'>
+					<ul className="px-2 py-2 flex flex-col gap-1">
 						<li>
 							<Button
 								asChild
-								variant='ghost'
-								className='w-full justify-start'
+								variant="ghost"
+								className="w-full justify-start gap-2"
 							>
-								<Link href='/profile'>Perfil</Link>
+								<Link href="/dashboard">
+									<LayoutDashboard className="h-4 w-4" />
+									Dashboard
+								</Link>
 							</Button>
 						</li>
 						<li>
 							<Button
 								asChild
-								variant='ghost'
-								className='w-full justify-start'
+								variant="ghost"
+								className="w-full justify-start gap-2"
 							>
-								<Link href='/users'>Usuarios</Link>
+								<Link href="/orders">
+									<ShoppingCart className="h-4 w-4" />
+									Órdenes
+								</Link>
 							</Button>
 						</li>
-						{/* <li>
+						<li>
 							<Button
 								asChild
-								variant='ghost'
-								className='w-full justify-start'
+								variant="ghost"
+								className="w-full justify-start gap-2"
 							>
-								<Link href='/materials'>Materiales</Link>
+								<Link href="/users">
+									<Users className="h-4 w-4" />
+									Usuarios
+								</Link>
 							</Button>
-						</li> */}
+						</li>
+						<li>
+							<Button
+								asChild
+								variant="ghost"
+								className="w-full justify-start gap-2"
+							>
+								<Link href="/materials">
+									<Package className="h-4 w-4" />
+									Materiales
+								</Link>
+							</Button>
+						</li>
+						<li>
+							<Button
+								asChild
+								variant="ghost"
+								className="w-full justify-start gap-2"
+							>
+								<Link href="/extras">
+									<Wrench className="h-4 w-4" />
+									Extras
+								</Link>
+							</Button>
+						</li>
+					</ul>
+					<Separator />
+					<ul className="px-2 py-2 flex flex-col gap-1">
+						<li>
+							<Button
+								asChild
+								variant="ghost"
+								className="w-full justify-start gap-2"
+							>
+								<Link href="/profile">
+									<User className="h-4 w-4" />
+									Mi Perfil
+								</Link>
+							</Button>
+						</li>
 					</ul>
 				</Card>
 			</nav>
-			<main className='flex-1 p-8 overflow-auto'>{children}</main>
+			<main className="flex-1 p-8 overflow-auto">{children}</main>
 		</div>
 	);
 }

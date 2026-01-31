@@ -29,6 +29,7 @@ interface DataTableProps<TData> {
 	data: TData[];
 	currentPage: number;
 	totalPages: number;
+	baseUrl?: string;
 }
 
 export function DataTable<TData>({
@@ -36,6 +37,7 @@ export function DataTable<TData>({
 	data,
 	currentPage,
 	totalPages,
+	baseUrl = '/users',
 }: DataTableProps<TData>) {
 	const router = useRouter();
 
@@ -49,7 +51,10 @@ export function DataTable<TData>({
 
 	const handlePageChange = (newPage: number) => {
 		if (newPage < 1 || newPage > totalPages) return;
-		router.push(`/users?page=${newPage}`);
+		const url = new URL(baseUrl, window.location.origin);
+		const currentParams = new URLSearchParams(window.location.search);
+		currentParams.set('page', String(newPage));
+		router.push(`${baseUrl}?${currentParams.toString()}`);
 	};
 
 	return (
