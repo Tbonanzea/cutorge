@@ -4,7 +4,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { useEffect, useState, Suspense } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { CheckCircle2, Mail, MessageCircle, Home } from 'lucide-react';
+import { CheckCircle2, Mail, MessageCircle, Home, CreditCard } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 
 function SuccessContent() {
@@ -116,6 +116,30 @@ function SuccessContent() {
 								Te mantendremos informado sobre el estado de tu orden por email
 							</li>
 						</ol>
+					</div>
+				</CardContent>
+			</Card>
+
+			{/* Payment CTA */}
+			<Card className="border-blue-500 bg-blue-50">
+				<CardContent className="pt-6">
+					<div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+						<div>
+							<h3 className="font-semibold text-blue-900">
+								¿Listo para pagar?
+							</h3>
+							<p className="text-sm text-blue-700">
+								Procede al checkout para completar tu orden
+							</p>
+						</div>
+						<Button
+							size="lg"
+							className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700"
+							onClick={() => router.push(`/checkout?orderId=${orderId}`)}
+						>
+							<CreditCard className="mr-2 h-5 w-5" />
+							Ir al Checkout
+						</Button>
 					</div>
 				</CardContent>
 			</Card>

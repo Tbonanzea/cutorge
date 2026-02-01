@@ -138,12 +138,22 @@ model OrderItem {
 }
 
 model Payment {
-  id          String       @id @default(uuid())
-  orderId     String
-  paymentMethod String
-  status      PaymentStatus @default(PENDING)
-  amount      Float
-  paidAt      DateTime?
+  id                String        @id @default(uuid())
+  orderId           String
+  paymentMethod     String        // "MERCADOPAGO" | "TRANSFER"
+  status            PaymentStatus @default(PENDING)
+  amount            Float
+  paidAt            DateTime?
+
+  // MercadoPago specific fields
+  mercadopagoId     String?       // Preference ID or Payment ID from MP
+  mercadopagoStatus String?       // Raw status from MP (approved, pending, etc)
+
+  // Bank transfer specific fields
+  transferDetails   Json?         // { comprobante: "...", banco: "...", fecha: "..." }
+
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
 
   order Order @relation(fields: [orderId], references: [id])
 }

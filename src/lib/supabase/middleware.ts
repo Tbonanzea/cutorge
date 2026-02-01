@@ -9,7 +9,12 @@ const publicRoutes = [
 	'/auth/password/forgot',
 	'/auth/confirm',
 	'/auth/callback',
-	'/dxf-test', // Test page for DXF viewer
+	'/about',
+];
+
+// Routes that start with these prefixes are public (webhooks, etc.)
+const publicPrefixes = [
+	'/api/webhooks/',
 ];
 
 export async function updateSession(request: NextRequest) {
@@ -27,17 +32,17 @@ export async function updateSession(request: NextRequest) {
 				},
 				setAll(cookiesToSet) {
 					cookiesToSet.forEach(({ name, value }) =>
-						request.cookies.set(name, value)
+						request.cookies.set(name, value),
 					);
 					supabaseResponse = NextResponse.next({
 						request,
 					});
 					cookiesToSet.forEach(({ name, value, options }) =>
-						supabaseResponse.cookies.set(name, value, options)
+						supabaseResponse.cookies.set(name, value, options),
 					);
 				},
 			},
-		}
+		},
 	);
 
 	// Do not run code between createServerClient and
@@ -50,7 +55,12 @@ export async function updateSession(request: NextRequest) {
 		data: { user },
 	} = await supabase.auth.getUser();
 
-	if (!user && !publicRoutes.includes(request.nextUrl.pathname)) {
+	const isPublicRoute = publicRoutes.includes(request.nextUrl.pathname);
+	const isPublicPrefix = publicPrefixes.some(prefix =>
+		request.nextUrl.pathname.startsWith(prefix)
+	);
+
+	if (!user && !isPublicRoute && !isPublicPrefix) {
 		// no user, potentially respond by redirecting the user to the login page
 		const url = request.nextUrl.clone();
 		url.pathname = '/auth/login';

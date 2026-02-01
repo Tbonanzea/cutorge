@@ -25,6 +25,12 @@ export type OrderWithDetails = Prisma.OrderGetPayload<{
 				};
 			};
 		};
+		extras: {
+			include: {
+				extraService: true;
+			};
+		};
+		payments: true;
 	};
 }>;
 
@@ -104,6 +110,14 @@ export async function getOrderById(orderId: string) {
 							},
 						},
 					},
+				},
+				extras: {
+					include: {
+						extraService: true,
+					},
+				},
+				payments: {
+					orderBy: { createdAt: 'desc' },
 				},
 			},
 		});

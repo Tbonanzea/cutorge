@@ -16,7 +16,8 @@ import {
 	TableRow,
 } from '@/components/ui/table';
 import { Separator } from '@/components/ui/separator';
-import { ArrowLeft, ExternalLink, Loader2 } from 'lucide-react';
+import { ArrowLeft, ExternalLink, Loader2, CreditCard, Building2, CheckCircle2, Clock, XCircle } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import Link from 'next/link';
 import { formatDistanceToNow, format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -54,7 +55,9 @@ export default function OrderDetailPage() {
 	const [order, setOrder] = useState<OrderWithDetails | null>(null);
 	const [loading, setLoading] = useState(true);
 	const [updating, setUpdating] = useState(false);
+	const [confirmingTransfer, setConfirmingTransfer] = useState(false);
 	const [error, setError] = useState<string | null>(null);
+	const [success, setSuccess] = useState<string | null>(null);
 
 	const orderId = params.id as string;
 
@@ -73,6 +76,7 @@ export default function OrderDetailPage() {
 
 	const handleStatusChange = async (newStatus: OrderStatus) => {
 		setUpdating(true);
+		setError(null);
 		const result = await updateOrderStatus(orderId, newStatus);
 		if (result.success && result.order) {
 			setOrder((prev) => (prev ? { ...prev, status: result.order!.status } : null));
@@ -80,6 +84,37 @@ export default function OrderDetailPage() {
 			setError(result.error || 'Error al actualizar el estado');
 		}
 		setUpdating(false);
+	};
+
+	const handleConfirmTransfer = async (paymentId: string) => {
+		setConfirmingTransfer(true);
+		setError(null);
+		setSuccess(null);
+
+		try {
+			const response = await fetch('/api/payments/confirm-transfer', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ paymentId }),
+			});
+
+			const data = await response.json();
+
+			if (!response.ok) {
+				throw new Error(data.error || 'Error al confirmar transferencia');
+			}
+
+			// Refresh order data
+			const result = await getOrderById(orderId);
+			if (result.success && result.order) {
+				setOrder(result.order);
+			}
+			setSuccess('Transferencia confirmada exitosamente');
+		} catch (err: any) {
+			setError(err.message || 'Error al confirmar transferencia');
+		} finally {
+			setConfirmingTransfer(false);
+		}
 	};
 
 	if (loading) {
@@ -115,8 +150,60 @@ export default function OrderDetailPage() {
 	const nextStatus = nextStatusMap[order.status];
 	const canCancel = order.status !== 'COMPLETED' && order.status !== 'CANCELLED';
 
+	// Find pending transfer payment (used in UI)
+	const _pendingTransfer = order.payments?.find(
+		(p) => p.paymentMethod === 'TRANSFER' && p.status === 'PENDING'
+	);
+
+	// Get payment status info
+	const getPaymentStatusIcon = (status: string) => {
+		switch (status) {
+			case 'COMPLETED':
+				return <CheckCircle2 className="h-4 w-4 text-green-600" />;
+			case 'FAILED':
+				return <XCircle className="h-4 w-4 text-red-600" />;
+			default:
+				return <Clock className="h-4 w-4 text-yellow-600" />;
+		}
+	};
+
+	const getPaymentStatusLabel = (status: string) => {
+		switch (status) {
+			case 'COMPLETED':
+				return 'Completado';
+			case 'FAILED':
+				return 'Fallido';
+			default:
+				return 'Pendiente';
+		}
+	};
+
+	const getPaymentMethodLabel = (method: string) => {
+		switch (method) {
+			case 'MERCADOPAGO':
+				return 'MercadoPago';
+			case 'TRANSFER':
+				return 'Transferencia Bancaria';
+			default:
+				return method;
+		}
+	};
+
 	return (
 		<div className="container mx-auto py-10 space-y-6">
+			{/* Error/Success Messages */}
+			{error && (
+				<Alert variant="destructive">
+					<AlertDescription>{error}</AlertDescription>
+				</Alert>
+			)}
+			{success && (
+				<Alert className="border-green-200 bg-green-50">
+					<CheckCircle2 className="h-4 w-4 text-green-600" />
+					<AlertDescription className="text-green-800">{success}</AlertDescription>
+				</Alert>
+			)}
+
 			{/* Header */}
 			<div className="flex items-center justify-between">
 				<div className="flex items-center gap-4">
@@ -330,6 +417,100 @@ export default function OrderDetailPage() {
 					</div>
 				</CardContent>
 			</Card>
+
+			{/* Payments Section */}
+			<Card>
+				<CardHeader>
+					<CardTitle className="flex items-center gap-2">
+						<CreditCard className="h-5 w-5" />
+						Pagos
+					</CardTitle>
+				</CardHeader>
+				<CardContent>
+					{order.payments && order.payments.length > 0 ? (
+						<div className="space-y-4">
+							{order.payments.map((payment) => (
+								<div
+									key={payment.id}
+									className="flex items-center justify-between p-4 bg-gray-50 rounded-lg"
+								>
+									<div className="flex items-center gap-4">
+										{payment.paymentMethod === 'MERCADOPAGO' ? (
+											<CreditCard className="h-8 w-8 text-blue-600" />
+										) : (
+											<Building2 className="h-8 w-8 text-emerald-600" />
+										)}
+										<div>
+											<p className="font-medium">
+												{getPaymentMethodLabel(payment.paymentMethod)}
+											</p>
+											<p className="text-sm text-gray-500">
+												${payment.amount.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+											</p>
+											{payment.paidAt && (
+												<p className="text-xs text-gray-400">
+													Pagado: {format(new Date(payment.paidAt), "d/MM/yyyy HH:mm", { locale: es })}
+												</p>
+											)}
+										</div>
+									</div>
+									<div className="flex items-center gap-4">
+										<div className="flex items-center gap-2">
+											{getPaymentStatusIcon(payment.status)}
+											<span className="text-sm">{getPaymentStatusLabel(payment.status)}</span>
+										</div>
+										{payment.paymentMethod === 'TRANSFER' && payment.status === 'PENDING' && (
+											<Button
+												size="sm"
+												onClick={() => handleConfirmTransfer(payment.id)}
+												disabled={confirmingTransfer}
+											>
+												{confirmingTransfer ? (
+													<Loader2 className="mr-2 h-4 w-4 animate-spin" />
+												) : (
+													<CheckCircle2 className="mr-2 h-4 w-4" />
+												)}
+												Confirmar Pago
+											</Button>
+										)}
+									</div>
+								</div>
+							))}
+						</div>
+					) : (
+						<div className="text-center py-8 text-gray-500">
+							<CreditCard className="h-12 w-12 mx-auto mb-2 opacity-50" />
+							<p>No hay pagos registrados para esta orden</p>
+							{order.status === 'PENDING' && (
+								<p className="text-sm mt-2">
+									El cliente aun no ha iniciado el proceso de pago
+								</p>
+							)}
+						</div>
+					)}
+				</CardContent>
+			</Card>
+
+			{/* Extras Section */}
+			{order.extras && order.extras.length > 0 && (
+				<Card>
+					<CardHeader>
+						<CardTitle>Servicios Adicionales</CardTitle>
+					</CardHeader>
+					<CardContent>
+						<div className="space-y-2">
+							{order.extras.map((extra) => (
+								<div key={extra.id} className="flex justify-between items-center p-3 bg-gray-50 rounded">
+									<span>{extra.extraService.name}</span>
+									<span className="font-medium">
+										${extra.priceAtOrder.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+									</span>
+								</div>
+							))}
+						</div>
+					</CardContent>
+				</Card>
+			)}
 		</div>
 	);
 }
