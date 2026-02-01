@@ -7,6 +7,8 @@ import {
 	NavigationMenuList,
 } from '@/components/ui/navigation-menu';
 import { LayoutDashboard, SquareUser } from 'lucide-react';
+import Image from 'next/image';
+import Link from 'next/link';
 
 interface NavBarProps {
 	isAdmin?: boolean;
@@ -16,7 +18,15 @@ export default function NavBar({ isAdmin = false }: NavBarProps) {
 	return (
 		<nav className='fixed top-0 left-0 w-full flex items-center justify-between h-16 px-4 border-b bg-background z-50'>
 			{/* Brand */}
-			<span className='font-bold text-xl'>CutForge</span>
+			<Link href='/'>
+				<Image
+					src='/images/logo.png'
+					alt='CutForge'
+					width={160}
+					height={40}
+					priority
+				/>
+			</Link>
 			{/* Navigation Links */}
 			<div className='flex items-center gap-4'>
 				<NavigationMenu>

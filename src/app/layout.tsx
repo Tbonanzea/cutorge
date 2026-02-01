@@ -1,13 +1,55 @@
 import Footer from '@/components/Footer';
 import Header from '@/components/Header';
 import '@/styles/globals.css';
+import type { Metadata } from 'next';
 import { ReactNode } from 'react';
 import { Providers } from './providers';
 
-// (Opcional) Define metadata para el <head>
-export const metadata = {
-	title: 'Mi App',
-	description: 'Esta es mi aplicación con un layout global',
+export const metadata: Metadata = {
+	title: {
+		default: 'CutForge - Corte Láser y CNC Personalizado',
+		template: '%s | CutForge',
+	},
+	description:
+		'Plataforma de corte láser y CNC personalizado. Sube tu diseño DXF, elige el material y recibe tu pieza cortada con precisión.',
+	keywords: [
+		'corte láser',
+		'CNC',
+		'corte personalizado',
+		'DXF',
+		'metal',
+		'acrílico',
+		'fabricación',
+	],
+	authors: [{ name: 'CutForge' }],
+	creator: 'CutForge',
+	icons: {
+		icon: [
+			{ url: '/favicon.ico', sizes: 'any' },
+			{ url: '/favicon.svg', type: 'image/svg+xml' },
+			{ url: '/favicon-96x96.png', sizes: '96x96', type: 'image/png' },
+		],
+		apple: [{ url: '/apple-touch-icon.png', sizes: '180x180' }],
+	},
+	manifest: '/site.webmanifest',
+	openGraph: {
+		type: 'website',
+		locale: 'es_AR',
+		siteName: 'CutForge',
+		title: 'CutForge - Corte Láser y CNC Personalizado',
+		description:
+			'Plataforma de corte láser y CNC personalizado. Sube tu diseño DXF, elige el material y recibe tu pieza cortada con precisión.',
+	},
+	twitter: {
+		card: 'summary_large_image',
+		title: 'CutForge - Corte Láser y CNC Personalizado',
+		description:
+			'Plataforma de corte láser y CNC personalizado. Sube tu diseño DXF, elige el material y recibe tu pieza cortada con precisión.',
+	},
+	robots: {
+		index: true,
+		follow: true,
+	},
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
