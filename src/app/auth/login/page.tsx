@@ -1,17 +1,57 @@
 import LogInForm from '@/components/forms/LogInForm';
-import { Card, CardContent, CardTitle } from '@/components/ui/card';
+import {
+	Card,
+	CardContent,
+	CardDescription,
+	CardHeader,
+	CardTitle,
+} from '@/components/ui/card';
+import Image from 'next/image';
+import Link from 'next/link';
 
 export default function LogInPage() {
 	return (
-		<div className='flex justify-center pt-25'>
-			<Card className='w-full max-w-md max-h-[90vh] overflow-y-auto'>
-				<CardTitle className='text-center text-2xl font-bold'>
-					Iniciar Sesión
-				</CardTitle>
-				<CardContent>
-					<LogInForm />
-				</CardContent>
-			</Card>
+		<div className='min-h-[calc(100vh-5rem)] flex items-center justify-center px-4 py-12 bg-gradient-to-b from-muted/50 to-background'>
+			<div className='w-full max-w-md space-y-6'>
+				{/* Card */}
+				<Card className='border-2 shadow-xl'>
+					<CardHeader className='text-center pb-2'>
+						{/* Logo */}
+						<div className='text-center'>
+							<Link href='/' className='inline-block'>
+								<Image
+									src='/images/logo.png'
+									alt='CutForge'
+									width={180}
+									height={45}
+									className='h-24 w-auto mx-auto'
+								/>
+							</Link>
+						</div>
+						<CardTitle className='text-2xl'>
+							Iniciar Sesión
+						</CardTitle>
+						<CardDescription>
+							Accede a tu cuenta para cotizar y gestionar tus
+							pedidos
+						</CardDescription>
+					</CardHeader>
+					<CardContent>
+						<LogInForm />
+					</CardContent>
+				</Card>
+
+				{/* Footer text */}
+				<p className='text-center text-sm text-muted-foreground'>
+					¿Primera vez en CutForge?{' '}
+					<Link
+						href='/auth/signup'
+						className='text-secondary hover:text-secondary/80 font-medium'
+					>
+						Crea tu cuenta gratis
+					</Link>
+				</p>
+			</div>
 		</div>
 	);
 }
