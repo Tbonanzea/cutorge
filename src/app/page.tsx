@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
 	Card,
@@ -7,28 +7,28 @@ import {
 	CardHeader,
 	CardTitle,
 } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import {
-	Upload,
-	CheckCircle2,
-	Zap,
-	Package,
-	Layers,
-	Sparkles,
-	ShieldCheck,
-	Clock,
 	ArrowRight,
+	CheckCircle2,
+	Clock,
 	FileText,
+	Layers,
+	Package,
 	Settings,
+	ShieldCheck,
+	Sparkles,
 	Truck,
+	Upload,
+	Zap,
 } from 'lucide-react';
+import Link from 'next/link';
 
 export default function Home() {
 	return (
 		<div className='flex flex-col'>
 			{/* Hero Section */}
 			<section className='relative overflow-hidden bg-gradient-to-br from-background via-background to-accent/10'>
-				<div className="absolute inset-0 bg-[linear-gradient(to_right,#8882_1px,transparent_1px),linear-gradient(to_bottom,#8882_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_110%)]" />
+				<div className='absolute inset-0 bg-[linear-gradient(to_right,#8882_1px,transparent_1px),linear-gradient(to_bottom,#8882_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_110%)]' />
 
 				<div className='relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-24 md:pt-28 md:pb-32'>
 					<div className='grid lg:grid-cols-2 gap-12 lg:gap-16 items-center'>
@@ -42,12 +42,15 @@ export default function Home() {
 
 								<h1 className='text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight text-foreground'>
 									Corte láser y CNC{' '}
-									<span className='text-secondary'>para makers</span>
+									<span className='text-secondary'>
+										para makers
+									</span>
 								</h1>
 
 								<p className='text-lg md:text-xl text-muted-foreground max-w-xl'>
-									Sube tu DXF, elige el material y recibe tu pieza cortada con
-									precisión. Sin complicaciones, sin esperas innecesarias.
+									Sube tu DXF, elige el material y recibe tu
+									pieza cortada con precisión. Sin
+									complicaciones, sin esperas innecesarias.
 								</p>
 							</div>
 
@@ -69,7 +72,9 @@ export default function Home() {
 									size='lg'
 									className='text-base'
 								>
-									<Link href='#como-funciona'>Cómo funciona</Link>
+									<Link href='#como-funciona'>
+										Cómo funciona
+									</Link>
 								</Button>
 							</div>
 
@@ -104,7 +109,9 @@ export default function Home() {
 											<div className='size-10 rounded-lg bg-secondary/10 flex items-center justify-center'>
 												<FileText className='size-5 text-secondary' />
 											</div>
-											<CardTitle className='text-sm'>Upload DXF</CardTitle>
+											<CardTitle className='text-sm'>
+												Upload DXF
+											</CardTitle>
 										</div>
 									</CardHeader>
 									<CardContent>
@@ -120,14 +127,22 @@ export default function Home() {
 											<div className='size-10 rounded-lg bg-primary/10 flex items-center justify-center'>
 												<Settings className='size-5 text-primary' />
 											</div>
-											<CardTitle className='text-sm'>Material</CardTitle>
+											<CardTitle className='text-sm'>
+												Material
+											</CardTitle>
 										</div>
 									</CardHeader>
 									<CardContent className='space-y-2'>
-										<Badge variant='outline' className='text-xs'>
+										<Badge
+											variant='outline'
+											className='text-xs'
+										>
 											Acero Inox
 										</Badge>
-										<Badge variant='outline' className='text-xs'>
+										<Badge
+											variant='outline'
+											className='text-xs'
+										>
 											3mm
 										</Badge>
 									</CardContent>
@@ -136,8 +151,12 @@ export default function Home() {
 								<Card className='absolute bottom-20 right-12 w-56 rotate-3 shadow-xl hover:rotate-1 transition-transform border-secondary/20'>
 									<CardHeader className='pb-3'>
 										<div className='flex items-center justify-between'>
-											<CardTitle className='text-sm'>Cotización</CardTitle>
-											<Badge variant='secondary'>Listo</Badge>
+											<CardTitle className='text-sm'>
+												Cotización
+											</CardTitle>
+											<Badge variant='secondary'>
+												Listo
+											</Badge>
 										</div>
 									</CardHeader>
 									<CardContent>
@@ -166,8 +185,8 @@ export default function Home() {
 							De diseño a pieza real en 4 pasos
 						</h2>
 						<p className='text-lg text-muted-foreground'>
-							No necesitas conocimientos técnicos. Nuestro sistema te guía en
-							cada paso.
+							No necesitas conocimientos técnicos. Nuestro sistema
+							te guía en cada paso.
 						</p>
 					</div>
 
@@ -185,10 +204,12 @@ export default function Home() {
 								</div>
 
 								<div className='space-y-2'>
-									<h3 className='text-xl font-semibold'>Sube tu DXF</h3>
+									<h3 className='text-xl font-semibold'>
+										Sube tu DXF
+									</h3>
 									<p className='text-muted-foreground text-sm leading-relaxed'>
-										Arrastra tu archivo de diseño. Validamos formato y
-										dimensiones automáticamente.
+										Arrastra tu archivo de diseño. Validamos
+										formato y dimensiones automáticamente.
 									</p>
 								</div>
 							</div>
@@ -207,10 +228,13 @@ export default function Home() {
 								</div>
 
 								<div className='space-y-2'>
-									<h3 className='text-xl font-semibold'>Elige material</h3>
+									<h3 className='text-xl font-semibold'>
+										Elige material
+									</h3>
 									<p className='text-muted-foreground text-sm leading-relaxed'>
-										Selecciona entre acero inoxidable, aluminio, acero al
-										carbono, cobre o latón.
+										Selecciona entre acero inoxidable,
+										aluminio, acero al carbono, cobre o
+										latón.
 									</p>
 								</div>
 							</div>
@@ -229,10 +253,13 @@ export default function Home() {
 								</div>
 
 								<div className='space-y-2'>
-									<h3 className='text-xl font-semibold'>Recibe cotización</h3>
+									<h3 className='text-xl font-semibold'>
+										Recibe cotización
+									</h3>
 									<p className='text-muted-foreground text-sm leading-relaxed'>
-										Precio instantáneo y transparente. Agrega grabado, pintura o
-										ensamblaje si quieres.
+										Precio instantáneo y transparente.
+										Agrega grabado, pintura o ensamblaje si
+										quieres.
 									</p>
 								</div>
 							</div>
@@ -251,10 +278,12 @@ export default function Home() {
 								</div>
 
 								<div className='space-y-2'>
-									<h3 className='text-xl font-semibold'>Recibe tu pieza</h3>
+									<h3 className='text-xl font-semibold'>
+										Recibe tu pieza
+									</h3>
 									<p className='text-muted-foreground text-sm leading-relaxed'>
-										Cortamos con precisión láser. Envío a todo el país en 5-7
-										días hábiles.
+										Cortamos con precisión láser. Envío a
+										todo el país en 5-7 días hábiles.
 									</p>
 								</div>
 							</div>
@@ -274,8 +303,8 @@ export default function Home() {
 							5 materiales de calidad industrial
 						</h2>
 						<p className='text-lg text-muted-foreground'>
-							Cortamos con precisión de ±0.1mm en los mejores materiales del
-							mercado
+							Cortamos con precisión de ±0.1mm en los mejores
+							materiales del mercado
 						</p>
 					</div>
 
@@ -284,17 +313,25 @@ export default function Home() {
 						<Card className='hover:shadow-lg transition-shadow hover:border-primary/50 group'>
 							<CardHeader>
 								<div className='size-16 rounded-xl bg-gradient-to-br from-slate-300 to-slate-500 mb-4 shadow-inner' />
-								<CardTitle className='text-base'>Acero Inoxidable</CardTitle>
+								<CardTitle className='text-base'>
+									Acero Inoxidable
+								</CardTitle>
 								<CardDescription className='text-xs'>
 									Resistente a corrosión, ideal para exterior
 								</CardDescription>
 							</CardHeader>
 							<CardContent className='pt-0'>
 								<div className='flex flex-wrap gap-1.5'>
-									<Badge variant='outline' className='text-xs'>
+									<Badge
+										variant='outline'
+										className='text-xs'
+									>
 										304
 									</Badge>
-									<Badge variant='outline' className='text-xs'>
+									<Badge
+										variant='outline'
+										className='text-xs'
+									>
 										316
 									</Badge>
 								</div>
@@ -305,17 +342,25 @@ export default function Home() {
 						<Card className='hover:shadow-lg transition-shadow hover:border-primary/50 group sm:mt-6'>
 							<CardHeader>
 								<div className='size-16 rounded-xl bg-gradient-to-br from-gray-200 to-gray-400 mb-4 shadow-inner' />
-								<CardTitle className='text-base'>Aluminio</CardTitle>
+								<CardTitle className='text-base'>
+									Aluminio
+								</CardTitle>
 								<CardDescription className='text-xs'>
 									Ligero y versátil, fácil de trabajar
 								</CardDescription>
 							</CardHeader>
 							<CardContent className='pt-0'>
 								<div className='flex flex-wrap gap-1.5'>
-									<Badge variant='outline' className='text-xs'>
+									<Badge
+										variant='outline'
+										className='text-xs'
+									>
 										6061
 									</Badge>
-									<Badge variant='outline' className='text-xs'>
+									<Badge
+										variant='outline'
+										className='text-xs'
+									>
 										5052
 									</Badge>
 								</div>
@@ -326,17 +371,25 @@ export default function Home() {
 						<Card className='hover:shadow-lg transition-shadow hover:border-primary/50 group'>
 							<CardHeader>
 								<div className='size-16 rounded-xl bg-gradient-to-br from-slate-600 to-slate-800 mb-4 shadow-inner' />
-								<CardTitle className='text-base'>Acero al Carbono</CardTitle>
+								<CardTitle className='text-base'>
+									Acero al Carbono
+								</CardTitle>
 								<CardDescription className='text-xs'>
 									Económico y resistente, alta dureza
 								</CardDescription>
 							</CardHeader>
 							<CardContent className='pt-0'>
 								<div className='flex flex-wrap gap-1.5'>
-									<Badge variant='outline' className='text-xs'>
+									<Badge
+										variant='outline'
+										className='text-xs'
+									>
 										A36
 									</Badge>
-									<Badge variant='outline' className='text-xs'>
+									<Badge
+										variant='outline'
+										className='text-xs'
+									>
 										1018
 									</Badge>
 								</div>
@@ -347,17 +400,25 @@ export default function Home() {
 						<Card className='hover:shadow-lg transition-shadow hover:border-primary/50 group sm:mt-6'>
 							<CardHeader>
 								<div className='size-16 rounded-xl bg-gradient-to-br from-orange-400 to-orange-600 mb-4 shadow-inner' />
-								<CardTitle className='text-base'>Cobre</CardTitle>
+								<CardTitle className='text-base'>
+									Cobre
+								</CardTitle>
 								<CardDescription className='text-xs'>
 									Conductividad excepcional, estética
 								</CardDescription>
 							</CardHeader>
 							<CardContent className='pt-0'>
 								<div className='flex flex-wrap gap-1.5'>
-									<Badge variant='outline' className='text-xs'>
+									<Badge
+										variant='outline'
+										className='text-xs'
+									>
 										C110
 									</Badge>
-									<Badge variant='outline' className='text-xs'>
+									<Badge
+										variant='outline'
+										className='text-xs'
+									>
 										C101
 									</Badge>
 								</div>
@@ -368,17 +429,25 @@ export default function Home() {
 						<Card className='hover:shadow-lg transition-shadow hover:border-primary/50 group'>
 							<CardHeader>
 								<div className='size-16 rounded-xl bg-gradient-to-br from-yellow-600 to-yellow-700 mb-4 shadow-inner' />
-								<CardTitle className='text-base'>Latón</CardTitle>
+								<CardTitle className='text-base'>
+									Latón
+								</CardTitle>
 								<CardDescription className='text-xs'>
 									Decorativo y maquinable, acabado dorado
 								</CardDescription>
 							</CardHeader>
 							<CardContent className='pt-0'>
 								<div className='flex flex-wrap gap-1.5'>
-									<Badge variant='outline' className='text-xs'>
+									<Badge
+										variant='outline'
+										className='text-xs'
+									>
 										260
 									</Badge>
-									<Badge variant='outline' className='text-xs'>
+									<Badge
+										variant='outline'
+										className='text-xs'
+									>
 										360
 									</Badge>
 								</div>
@@ -396,12 +465,16 @@ export default function Home() {
 						<div className='space-y-8'>
 							<div className='space-y-4'>
 								<h2 className='text-3xl md:text-4xl font-bold tracking-tight'>
-									Diseñado para <span className='text-secondary'>makers</span>{' '}
+									Diseñado para{' '}
+									<span className='text-secondary'>
+										makers
+									</span>{' '}
 									como vos
 								</h2>
 								<p className='text-lg text-muted-foreground'>
-									Sin mínimos de orden. Sin tiempos de espera eternos. Solo tu
-									diseño convertido en realidad.
+									Sin mínimos de orden. Sin tiempos de espera
+									eternos. Solo tu diseño convertido en
+									realidad.
 								</p>
 							</div>
 
@@ -415,8 +488,9 @@ export default function Home() {
 											Cotización instantánea
 										</h3>
 										<p className='text-sm text-muted-foreground'>
-											Precio en segundos, sin esperar respuestas de ventas.
-											Transparencia total desde el inicio.
+											Precio en segundos, sin esperar
+											respuestas de ventas. Transparencia
+											total desde el inicio.
 										</p>
 									</div>
 								</div>
@@ -426,10 +500,13 @@ export default function Home() {
 										<Clock className='size-6 text-primary' />
 									</div>
 									<div>
-										<h3 className='font-semibold mb-1'>Rapidez garantizada</h3>
+										<h3 className='font-semibold mb-1'>
+											Rapidez garantizada
+										</h3>
 										<p className='text-sm text-muted-foreground'>
-											5-7 días de producción + envío. Entrega express disponible
-											para proyectos urgentes.
+											5-7 días de producción + envío.
+											Entrega express disponible para
+											proyectos urgentes.
 										</p>
 									</div>
 								</div>
@@ -439,10 +516,13 @@ export default function Home() {
 										<ShieldCheck className='size-6 text-secondary' />
 									</div>
 									<div>
-										<h3 className='font-semibold mb-1'>Calidad profesional</h3>
+										<h3 className='font-semibold mb-1'>
+											Calidad profesional
+										</h3>
 										<p className='text-sm text-muted-foreground'>
-											Máquinas industriales, precisión ±0.1mm, control de
-											calidad en cada pieza.
+											Máquinas industriales, precisión
+											±0.1mm, control de calidad en cada
+											pieza.
 										</p>
 									</div>
 								</div>
@@ -456,8 +536,8 @@ export default function Home() {
 											Envío a todo el país
 										</h3>
 										<p className='text-sm text-muted-foreground'>
-											Embalaje seguro, tracking incluido. Recibí tu pieza donde
-											estés.
+											Embalaje seguro, tracking incluido.
+											Recibí tu pieza donde estés.
 										</p>
 									</div>
 								</div>
@@ -470,7 +550,9 @@ export default function Home() {
 							<Card className='relative border-2 shadow-2xl'>
 								<CardHeader>
 									<div className='flex items-center justify-between'>
-										<Badge variant='secondary'>Popular</Badge>
+										<Badge variant='secondary'>
+											Popular
+										</Badge>
 										<Sparkles className='size-5 text-secondary' />
 									</div>
 									<CardTitle className='text-2xl pt-4'>
@@ -485,9 +567,12 @@ export default function Home() {
 										<div className='flex items-start gap-3'>
 											<CheckCircle2 className='size-5 text-secondary mt-0.5 shrink-0' />
 											<div>
-												<div className='font-medium'>Grabado láser</div>
+												<div className='font-medium'>
+													Grabado láser
+												</div>
 												<div className='text-sm text-muted-foreground'>
-													Logos, texto, números de serie
+													Logos, texto, números de
+													serie
 												</div>
 											</div>
 										</div>
@@ -495,9 +580,12 @@ export default function Home() {
 										<div className='flex items-start gap-3'>
 											<CheckCircle2 className='size-5 text-secondary mt-0.5 shrink-0' />
 											<div>
-												<div className='font-medium'>Pintura y acabado</div>
+												<div className='font-medium'>
+													Pintura y acabado
+												</div>
 												<div className='text-sm text-muted-foreground'>
-													Anodizado, powder coating, barniz
+													Anodizado, powder coating,
+													barniz
 												</div>
 											</div>
 										</div>
@@ -505,9 +593,12 @@ export default function Home() {
 										<div className='flex items-start gap-3'>
 											<CheckCircle2 className='size-5 text-secondary mt-0.5 shrink-0' />
 											<div>
-												<div className='font-medium'>Ensamblaje</div>
+												<div className='font-medium'>
+													Ensamblaje
+												</div>
 												<div className='text-sm text-muted-foreground'>
-													Plegado, soldadura, montaje de piezas
+													Plegado, soldadura, montaje
+													de piezas
 												</div>
 											</div>
 										</div>
@@ -515,16 +606,23 @@ export default function Home() {
 										<div className='flex items-start gap-3'>
 											<CheckCircle2 className='size-5 text-secondary mt-0.5 shrink-0' />
 											<div>
-												<div className='font-medium'>Entrega express</div>
+												<div className='font-medium'>
+													Entrega express
+												</div>
 												<div className='text-sm text-muted-foreground'>
-													2-3 días para proyectos urgentes
+													2-3 días para proyectos
+													urgentes
 												</div>
 											</div>
 										</div>
 									</div>
 
 									<div className='pt-4'>
-										<Button asChild className='w-full' size='lg'>
+										<Button
+											asChild
+											className='w-full'
+											size='lg'
+										>
 											<Link href='/quoting'>
 												Comenzar ahora
 												<ArrowRight />
@@ -540,7 +638,7 @@ export default function Home() {
 
 			{/* Final CTA */}
 			<section className='py-20 md:py-28 bg-primary text-primary-foreground relative overflow-hidden'>
-				<div className="absolute inset-0 bg-[linear-gradient(to_right,#fff1_1px,transparent_1px),linear-gradient(to_bottom,#fff1_1px,transparent_1px)] bg-[size:4rem_4rem]" />
+				<div className='absolute inset-0 bg-[linear-gradient(to_right,#fff1_1px,transparent_1px),linear-gradient(to_bottom,#fff1_1px,transparent_1px)] bg-[size:4rem_4rem]' />
 
 				<div className='relative max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-8'>
 					<div className='space-y-4'>
@@ -548,8 +646,8 @@ export default function Home() {
 							Convertí tu diseño en realidad
 						</h2>
 						<p className='text-lg md:text-xl text-primary-foreground/90 max-w-2xl mx-auto'>
-							Sube tu archivo DXF ahora y recibí tu cotización en segundos. Sin
-							compromiso, sin complicaciones.
+							Sube tu archivo DXF ahora y recibí tu cotización en
+							segundos. Sin compromiso, sin complicaciones.
 						</p>
 					</div>
 
