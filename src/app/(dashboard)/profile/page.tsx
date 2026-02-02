@@ -473,7 +473,7 @@ export default function ProfilePage() {
 												{...registerAddress('city', {
 													required: 'La ciudad es requerida',
 												})}
-												placeholder="Ej: Buenos Aires"
+												placeholder="Ej: Cordoba"
 											/>
 											{addressErrors.city && (
 												<p className="text-sm text-destructive">

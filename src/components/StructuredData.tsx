@@ -15,19 +15,25 @@ export function LocalBusinessJsonLd() {
 		email: 'contacto@cutforge.com', // TODO: Replace with actual email
 		address: {
 			'@type': 'PostalAddress',
-			addressLocality: 'Buenos Aires',
-			addressRegion: 'Buenos Aires',
+			addressLocality: 'Cordoba',
+			addressRegion: 'Cordoba',
 			addressCountry: 'AR',
 		},
 		geo: {
 			'@type': 'GeoCoordinates',
-			latitude: -34.6037, // Buenos Aires coordinates
-			longitude: -58.3816,
+			latitude: -31.4201, // Cordoba coordinates
+			longitude: -64.1888,
 		},
 		openingHoursSpecification: [
 			{
 				'@type': 'OpeningHoursSpecification',
-				dayOfWeek: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
+				dayOfWeek: [
+					'Monday',
+					'Tuesday',
+					'Wednesday',
+					'Thursday',
+					'Friday',
+				],
 				opens: '09:00',
 				closes: '18:00',
 			},
@@ -48,7 +54,8 @@ export function LocalBusinessJsonLd() {
 					itemOffered: {
 						'@type': 'Service',
 						name: 'Corte Láser',
-						description: 'Corte láser de precisión en diversos materiales',
+						description:
+							'Corte láser de precisión en diversos materiales',
 					},
 				},
 				{
@@ -129,7 +136,9 @@ export function BreadcrumbJsonLd({
 			'@type': 'ListItem',
 			position: index + 1,
 			name: item.name,
-			item: item.url.startsWith('http') ? item.url : `${baseUrl}${item.url}`,
+			item: item.url.startsWith('http')
+				? item.url
+				: `${baseUrl}${item.url}`,
 		})),
 	};
 

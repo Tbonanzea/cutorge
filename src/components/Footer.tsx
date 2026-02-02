@@ -121,7 +121,7 @@ export default function Footer() {
 							<li className='flex items-start gap-3'>
 								<MapPin className='size-4 mt-0.5 shrink-0 text-primary-foreground/60' />
 								<span className='text-sm text-primary-foreground/80'>
-									Buenos Aires, Argentina
+									Cordoba, Argentina
 								</span>
 							</li>
 						</ul>
