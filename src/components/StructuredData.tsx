@@ -11,7 +11,7 @@ export function LocalBusinessJsonLd() {
 		url: baseUrl,
 		logo: `${baseUrl}/logo.png`,
 		image: `${baseUrl}/og-image.png`,
-		telephone: '+54 9 11 XXXX-XXXX', // TODO: Replace with actual phone
+		telephone: '+54 9 351 XXXX-XXXX', // TODO: Replace with actual phone
 		email: 'contacto@cutforge.com', // TODO: Replace with actual email
 		address: {
 			'@type': 'PostalAddress',

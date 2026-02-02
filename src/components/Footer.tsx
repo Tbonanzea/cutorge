@@ -115,7 +115,7 @@ export default function Footer() {
 									href='tel:+5491123456789'
 									className='text-sm text-primary-foreground/80 hover:text-primary-foreground transition-colors'
 								>
-									+54 9 11 2345-6789
+									+54 9 351 123-456789
 								</a>
 							</li>
 							<li className='flex items-start gap-3'>
