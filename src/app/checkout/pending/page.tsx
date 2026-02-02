@@ -51,8 +51,8 @@ function PendingContent() {
 				</CardHeader>
 				<CardContent className="space-y-4">
 					{orderId && (
-						<div className="p-4 bg-slate-50 rounded-lg">
-							<p className="text-sm text-gray-600">Numero de Orden</p>
+						<div className="p-4 bg-muted/30 rounded-lg">
+							<p className="text-sm text-muted-foreground">Numero de Orden</p>
 							<p className="text-xl font-mono font-bold text-slate-900">
 								#{orderId.slice(0, 8).toUpperCase()}
 							</p>
@@ -134,7 +134,7 @@ export default function CheckoutPendingPage() {
 		<div className="container py-8">
 			<Suspense fallback={
 				<div className="flex items-center justify-center min-h-[400px]">
-					<Loader2 className="h-8 w-8 animate-spin text-gray-500" />
+					<Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
 				</div>
 			}>
 				<PendingContent />

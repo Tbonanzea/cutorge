@@ -123,7 +123,7 @@ export default function SignUpForm() {
 					</p>
 				)}
 				{isSuccess && (
-					<p className='text-green-600 mt-2'>
+					<p className='text-success mt-2'>
 						¡Registro exitoso! Verifica tu email para poder iniciar
 						sesión.
 					</p>

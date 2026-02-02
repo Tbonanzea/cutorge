@@ -61,7 +61,7 @@ export function ExtraServiceActions({
 				{loading ? (
 					<Loader2 className="h-4 w-4 animate-spin" />
 				) : isActive ? (
-					<ToggleRight className="h-4 w-4 text-green-600" />
+					<ToggleRight className="h-4 w-4 text-success" />
 				) : (
 					<ToggleLeft className="h-4 w-4 text-gray-400" />
 				)}

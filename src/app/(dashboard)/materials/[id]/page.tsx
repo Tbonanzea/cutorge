@@ -123,7 +123,7 @@ export default function EditMaterialPage() {
 	if (loading) {
 		return (
 			<div className="flex items-center justify-center h-64">
-				<Loader2 className="h-8 w-8 animate-spin text-gray-500" />
+				<Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
 			</div>
 		);
 	}
@@ -133,7 +133,7 @@ export default function EditMaterialPage() {
 			<div className="container mx-auto py-10">
 				<Card>
 					<CardContent className="py-10 text-center">
-						<p className="text-red-600">Material no encontrado</p>
+						<p className="text-destructive">Material no encontrado</p>
 						<Button asChild variant="outline" className="mt-4">
 							<Link href="/materials">Volver a materiales</Link>
 						</Button>
@@ -203,7 +203,7 @@ export default function EditMaterialPage() {
 				<CardHeader className="flex flex-row items-center justify-between">
 					<div>
 						<CardTitle>Tipos de Material (Espesores)</CardTitle>
-						<p className="text-sm text-gray-500 mt-1">
+						<p className="text-sm text-muted-foreground mt-1">
 							Configura las dimensiones y precios disponibles
 						</p>
 					</div>
@@ -216,7 +216,7 @@ export default function EditMaterialPage() {
 					{showNewTypeForm && (
 						<form
 							onSubmit={handleCreateType}
-							className="p-4 bg-gray-50 rounded-lg mb-6"
+							className="p-4 bg-muted rounded-lg mb-6"
 						>
 							<h4 className="font-medium mb-4">Nuevo Tipo de Material</h4>
 							<div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -357,7 +357,7 @@ export default function EditMaterialPage() {
 								<TableRow>
 									<TableCell
 										colSpan={6}
-										className="text-center text-gray-500 py-8"
+										className="text-center text-muted-foreground py-8"
 									>
 										No hay tipos de material configurados
 									</TableCell>
@@ -375,7 +375,7 @@ export default function EditMaterialPage() {
 											${type.pricePerUnit.toLocaleString('es-AR')}
 										</TableCell>
 										<TableCell>{type.stock} unidades</TableCell>
-										<TableCell className="text-sm text-gray-500">
+										<TableCell className="text-sm text-muted-foreground">
 											Ancho: {type.minCutWidth}-{type.maxCutWidth}mm
 											<br />
 											Largo: {type.minCutLength}-{type.maxCutLength}mm

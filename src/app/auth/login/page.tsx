@@ -6,8 +6,19 @@ import {
 	CardHeader,
 	CardTitle,
 } from '@/components/ui/card';
+import { Metadata } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
+
+export const metadata: Metadata = {
+	title: 'Iniciar Sesión',
+	description:
+		'Accede a tu cuenta de CutForge para cotizar y gestionar tus pedidos de corte láser y CNC.',
+	robots: {
+		index: true,
+		follow: true,
+	},
+};
 
 export default function LogInPage() {
 	return (

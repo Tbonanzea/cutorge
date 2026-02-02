@@ -177,14 +177,14 @@ export default function MaterialSelectionPage() {
 			</Card>
 
 			{/* Summary Card */}
-			<Card className='bg-slate-50'>
-				<CardContent className='pt-6'>
-					<div className='flex justify-between items-center'>
+			<Card className='bg-muted/30'>
+				<CardContent className='pt-4 md:pt-6'>
+					<div className='flex flex-col md:flex-row justify-between items-start md:items-center gap-3 md:gap-0'>
 						<div>
 							<p className='text-sm text-muted-foreground'>
 								Archivos configurados
 							</p>
-							<p className='text-2xl font-semibold'>
+							<p className='text-xl md:text-2xl font-semibold'>
 								{
 									cart.items.filter(
 										(item) =>
@@ -194,11 +194,11 @@ export default function MaterialSelectionPage() {
 								/ {cart.items.length}
 							</p>
 						</div>
-						<div className='text-right'>
+						<div className='md:text-right'>
 							<p className='text-sm text-muted-foreground'>
 								Subtotal estimado
 							</p>
-							<p className='text-2xl font-semibold text-green-600'>
+							<p className='text-xl md:text-2xl font-semibold text-success'>
 								$
 								{cart.items
 									.reduce((total, item) => {
@@ -218,12 +218,12 @@ export default function MaterialSelectionPage() {
 				</CardContent>
 			</Card>
 
-			{/* Navigation */}
-			<div className='flex justify-between'>
-				<Button variant='outline' onClick={prevStep}>
+			{/* Navigation - responsive */}
+			<div className='flex flex-col md:flex-row gap-3 md:justify-between'>
+				<Button variant='outline' onClick={prevStep} className='w-full md:w-auto min-h-[44px]'>
 					Volver
 				</Button>
-				<Button onClick={handleContinue} disabled={!canProceed}>
+				<Button onClick={handleContinue} disabled={!canProceed} className='w-full md:w-auto min-h-[44px]'>
 					{canProceed
 						? 'Continuar a Extras'
 						: 'Completa todos los campos'}

@@ -6,9 +6,19 @@ import {
 	CardHeader,
 	CardTitle,
 } from '@/components/ui/card';
+import { Metadata } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
+
+export const metadata: Metadata = {
+	title: 'Nueva Contraseña',
+	description: 'Establece una nueva contraseña para tu cuenta de CutForge.',
+	robots: {
+		index: false,
+		follow: false,
+	},
+};
 
 interface NewPasswordPageProps {
 	searchParams: Promise<{ [key: string]: string | string[] | undefined }>;

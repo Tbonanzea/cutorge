@@ -1,11 +1,16 @@
 import Footer from '@/components/Footer';
 import Header from '@/components/Header';
+import {
+	LocalBusinessJsonLd,
+	WebsiteJsonLd,
+} from '@/components/StructuredData';
 import '@/styles/globals.css';
 import type { Metadata } from 'next';
 import { ReactNode } from 'react';
 import { Providers } from './providers';
 
 export const metadata: Metadata = {
+	metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://cutforge.com'),
 	title: {
 		default: 'CutForge - Corte Láser y CNC Personalizado',
 		template: '%s | CutForge',
@@ -55,6 +60,10 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: ReactNode }) {
 	return (
 		<html lang='es'>
+			<head>
+				<LocalBusinessJsonLd />
+				<WebsiteJsonLd />
+			</head>
 			<body className='min-h-screen flex flex-col'>
 				<Providers>
 					<Header />

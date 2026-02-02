@@ -1,0 +1,142 @@
+export function LocalBusinessJsonLd() {
+	const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://cutforge.com';
+
+	const structuredData = {
+		'@context': 'https://schema.org',
+		'@type': 'LocalBusiness',
+		'@id': `${baseUrl}/#business`,
+		name: 'CutForge',
+		description:
+			'Plataforma de corte láser y CNC personalizado. Servicios de corte de precisión en metal, acrílico, MDF y más materiales.',
+		url: baseUrl,
+		logo: `${baseUrl}/logo.png`,
+		image: `${baseUrl}/og-image.png`,
+		telephone: '+54 9 11 XXXX-XXXX', // TODO: Replace with actual phone
+		email: 'contacto@cutforge.com', // TODO: Replace with actual email
+		address: {
+			'@type': 'PostalAddress',
+			addressLocality: 'Buenos Aires',
+			addressRegion: 'Buenos Aires',
+			addressCountry: 'AR',
+		},
+		geo: {
+			'@type': 'GeoCoordinates',
+			latitude: -34.6037, // Buenos Aires coordinates
+			longitude: -58.3816,
+		},
+		openingHoursSpecification: [
+			{
+				'@type': 'OpeningHoursSpecification',
+				dayOfWeek: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
+				opens: '09:00',
+				closes: '18:00',
+			},
+		],
+		priceRange: '$$',
+		currenciesAccepted: 'ARS',
+		paymentAccepted: 'MercadoPago, Transferencia Bancaria',
+		areaServed: {
+			'@type': 'Country',
+			name: 'Argentina',
+		},
+		hasOfferCatalog: {
+			'@type': 'OfferCatalog',
+			name: 'Servicios de Corte',
+			itemListElement: [
+				{
+					'@type': 'Offer',
+					itemOffered: {
+						'@type': 'Service',
+						name: 'Corte Láser',
+						description: 'Corte láser de precisión en diversos materiales',
+					},
+				},
+				{
+					'@type': 'Offer',
+					itemOffered: {
+						'@type': 'Service',
+						name: 'Corte CNC',
+						description: 'Corte CNC para piezas de mayor espesor',
+					},
+				},
+				{
+					'@type': 'Offer',
+					itemOffered: {
+						'@type': 'Service',
+						name: 'Grabado Láser',
+						description: 'Grabado y marcado láser personalizado',
+					},
+				},
+			],
+		},
+		sameAs: [
+			// TODO: Add social media URLs
+			// 'https://www.instagram.com/cutforge',
+			// 'https://www.facebook.com/cutforge',
+		],
+	};
+
+	return (
+		<script
+			type='application/ld+json'
+			dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+		/>
+	);
+}
+
+export function WebsiteJsonLd() {
+	const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://cutforge.com';
+
+	const structuredData = {
+		'@context': 'https://schema.org',
+		'@type': 'WebSite',
+		'@id': `${baseUrl}/#website`,
+		url: baseUrl,
+		name: 'CutForge',
+		description: 'Plataforma de corte láser y CNC personalizado',
+		publisher: {
+			'@id': `${baseUrl}/#business`,
+		},
+		potentialAction: {
+			'@type': 'SearchAction',
+			target: {
+				'@type': 'EntryPoint',
+				urlTemplate: `${baseUrl}/quoting?search={search_term_string}`,
+			},
+			'query-input': 'required name=search_term_string',
+		},
+	};
+
+	return (
+		<script
+			type='application/ld+json'
+			dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+		/>
+	);
+}
+
+export function BreadcrumbJsonLd({
+	items,
+}: {
+	items: { name: string; url: string }[];
+}) {
+	const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://cutforge.com';
+
+	const structuredData = {
+		'@context': 'https://schema.org',
+		'@type': 'BreadcrumbList',
+		itemListElement: items.map((item, index) => ({
+			'@type': 'ListItem',
+			position: index + 1,
+			name: item.name,
+			item: item.url.startsWith('http') ? item.url : `${baseUrl}${item.url}`,
+		})),
+	};
+
+	return (
+		<script
+			type='application/ld+json'
+			dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+		/>
+	);
+}

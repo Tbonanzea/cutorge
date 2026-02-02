@@ -17,6 +17,24 @@ const badgeVariants = cva(
           "border-transparent bg-destructive text-white [a&]:hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/60",
         outline:
           "text-foreground [a&]:hover:bg-accent [a&]:hover:text-accent-foreground",
+        // Semantic variants
+        success:
+          "border-transparent bg-success text-success-foreground [a&]:hover:bg-success/90",
+        warning:
+          "border-transparent bg-warning text-warning-foreground [a&]:hover:bg-warning/90",
+        info:
+          "border-transparent bg-info text-info-foreground [a&]:hover:bg-info/90",
+        // Status variants for orders
+        pending:
+          "border-transparent bg-status-pending text-status-pending-foreground [a&]:hover:bg-status-pending/90",
+        paid:
+          "border-transparent bg-status-paid text-status-paid-foreground [a&]:hover:bg-status-paid/90",
+        shipped:
+          "border-transparent bg-status-shipped text-status-shipped-foreground [a&]:hover:bg-status-shipped/90",
+        completed:
+          "border-transparent bg-status-completed text-status-completed-foreground [a&]:hover:bg-status-completed/90",
+        cancelled:
+          "border-transparent bg-destructive text-white [a&]:hover:bg-destructive/90",
       },
     },
     defaultVariants: {

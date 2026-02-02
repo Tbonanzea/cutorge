@@ -15,6 +15,6 @@ export const config = {
 		 * - localDebug (test files)
 		 * - Static assets (svg, png, jpg, gif, webp, dxf, DXF)
 		 */
-		'/((?!_next/static|_next/image|favicon.ico|localDebug|.*\\.(?:svg|png|jpg|jpeg|gif|webp|dxf|DXF)$).*)',
+		'/((?!_next/static|_next/image|favicon.ico|localDebug|.*\\.(?:svg|png|jpg|jpeg|gif|webp|dxf|DXF|webmanifest|ico)$).*)',
 	],
 };

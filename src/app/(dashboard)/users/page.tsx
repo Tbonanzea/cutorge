@@ -2,6 +2,12 @@
 import { getPaginatedUsers } from '@/app/(dashboard)/users/actions';
 import { columns } from './columns';
 import { DataTable } from './data-table';
+import { Metadata } from 'next';
+
+export const metadata: Metadata = {
+	title: 'Usuarios',
+	description: 'Gestión de usuarios registrados',
+};
 
 export default async function UsersPage({
 	searchParams,

@@ -82,12 +82,12 @@ export default function ReviewPage() {
 						{cart.items.map((item, idx) => (
 							<div
 								key={`${item.file.id}-${idx}`}
-								className="p-4 border rounded-lg bg-slate-50"
+								className="p-4 border rounded-lg bg-muted/30"
 							>
 								<div className="flex items-start justify-between">
 									<div className="flex-1">
 										<div className="flex items-center gap-2 mb-2">
-											<CheckCircle2 className="h-4 w-4 text-green-600" />
+											<CheckCircle2 className="h-4 w-4 text-success" />
 											<h4 className="font-semibold">
 												{item.file.filename}
 											</h4>
@@ -109,7 +109,7 @@ export default function ReviewPage() {
 										</div>
 									</div>
 									<div className="text-right ml-4">
-										<p className="text-lg font-semibold text-green-600">
+										<p className="text-lg font-semibold text-success">
 											$
 											{item.materialType
 												? (
@@ -138,7 +138,7 @@ export default function ReviewPage() {
 						</div>
 						<div className="text-right">
 							<p className="text-sm text-muted-foreground">Subtotal materiales</p>
-							<p className="text-xl font-semibold text-green-600">
+							<p className="text-xl font-semibold text-success">
 								${materialSubtotal.toFixed(2)}
 							</p>
 						</div>
@@ -167,7 +167,7 @@ export default function ReviewPage() {
 				<CardContent>
 					{loadingExtras ? (
 						<div className="flex items-center justify-center py-8">
-							<Loader2 className="h-6 w-6 animate-spin text-gray-500" />
+							<Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
 						</div>
 					) : cart.extras && cart.extras.length > 0 ? (
 						<>
@@ -179,7 +179,7 @@ export default function ReviewPage() {
 									return (
 										<div
 											key={extraId}
-											className="flex justify-between items-center p-3 border rounded-md bg-blue-50"
+											className="flex justify-between items-center p-3 border rounded-md bg-info/10"
 										>
 											<div>
 												<p className="font-medium">{service.name}</p>
@@ -188,7 +188,7 @@ export default function ReviewPage() {
 												</p>
 											</div>
 											<div className="text-right">
-												<p className="font-semibold text-green-600">
+												<p className="font-semibold text-success">
 													${service.price}
 												</p>
 												<p className="text-xs text-muted-foreground">
@@ -204,7 +204,7 @@ export default function ReviewPage() {
 
 							<div className="flex justify-between items-center">
 								<p className="text-sm text-muted-foreground">Total extras</p>
-								<p className="text-xl font-semibold text-green-600">
+								<p className="text-xl font-semibold text-success">
 									${extrasTotal.toFixed(2)}
 								</p>
 							</div>
@@ -257,7 +257,7 @@ export default function ReviewPage() {
 									{cart.items.length} archivo{cart.items.length !== 1 && 's'}
 								</p>
 							</div>
-							<p className="text-3xl font-bold text-green-600">
+							<p className="text-3xl font-bold text-success">
 								${grandTotal.toFixed(2)}
 							</p>
 						</div>
@@ -266,7 +266,7 @@ export default function ReviewPage() {
 			</Card>
 
 			{/* Actions */}
-			<Card className="bg-slate-50">
+			<Card className="bg-muted/30">
 				<CardContent className="pt-6">
 					<div className="space-y-4">
 						{error && (
@@ -291,15 +291,19 @@ export default function ReviewPage() {
 
 						<Separator />
 
-						<div className="flex justify-between gap-4">
-							<Button variant="outline" onClick={prevStep} disabled={isPending}>
+						<div className="flex flex-col md:flex-row gap-3 md:justify-between">
+							<Button
+								variant="outline"
+								onClick={prevStep}
+								disabled={isPending}
+								className="w-full md:w-auto min-h-[44px]"
+							>
 								Volver
 							</Button>
 							<Button
-								size="lg"
 								disabled={!canSubmit || isPending}
 								onClick={handleSubmit}
-								className="min-w-[200px]"
+								className="w-full md:w-auto min-h-[48px] text-base"
 							>
 								{isPending ? (
 									<>

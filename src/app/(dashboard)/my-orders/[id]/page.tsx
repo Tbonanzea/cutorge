@@ -84,9 +84,9 @@ export default function MyOrderDetailPage() {
 	const getPaymentStatusIcon = (status: string) => {
 		switch (status) {
 			case 'COMPLETED':
-				return <CheckCircle2 className="h-4 w-4 text-green-600" />;
+				return <CheckCircle2 className="h-4 w-4 text-success" />;
 			case 'FAILED':
-				return <XCircle className="h-4 w-4 text-red-600" />;
+				return <XCircle className="h-4 w-4 text-destructive" />;
 			default:
 				return <Clock className="h-4 w-4 text-yellow-600" />;
 		}
@@ -117,7 +117,7 @@ export default function MyOrderDetailPage() {
 	if (loading) {
 		return (
 			<div className="flex items-center justify-center h-64">
-				<Loader2 className="h-8 w-8 animate-spin text-gray-500" />
+				<Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
 			</div>
 		);
 	}
@@ -127,7 +127,7 @@ export default function MyOrderDetailPage() {
 			<div className="container mx-auto py-10">
 				<Card>
 					<CardContent className="py-10">
-						<div className="text-center text-red-600">
+						<div className="text-center text-destructive">
 							{error || 'Orden no encontrada'}
 						</div>
 						<div className="text-center mt-4">
@@ -176,11 +176,11 @@ export default function MyOrderDetailPage() {
 					</CardHeader>
 					<CardContent className="space-y-3">
 						<div>
-							<span className="text-sm text-gray-500">Número de orden</span>
+							<span className="text-sm text-muted-foreground">Número de orden</span>
 							<p className="font-mono text-sm">{order.id}</p>
 						</div>
 						<div>
-							<span className="text-sm text-gray-500">Fecha de creación</span>
+							<span className="text-sm text-muted-foreground">Fecha de creación</span>
 							<p>
 								{format(new Date(order.createdAt), "d 'de' MMMM, yyyy HH:mm", {
 									locale: es,
@@ -194,7 +194,7 @@ export default function MyOrderDetailPage() {
 							</p>
 						</div>
 						<div>
-							<span className="text-sm text-gray-500">Última actualización</span>
+							<span className="text-sm text-muted-foreground">Última actualización</span>
 							<p className="text-sm">
 								{formatDistanceToNow(new Date(order.updatedAt), {
 									addSuffix: true,
@@ -212,13 +212,13 @@ export default function MyOrderDetailPage() {
 					</CardHeader>
 					<CardContent className="space-y-3">
 						<div>
-							<span className="text-sm text-gray-500">Total de items</span>
+							<span className="text-sm text-muted-foreground">Total de items</span>
 							<p className="text-2xl font-bold">{order.items.length}</p>
 						</div>
 						<Separator />
 						<div>
-							<span className="text-sm text-gray-500">Total</span>
-							<p className="text-3xl font-bold text-green-600">
+							<span className="text-sm text-muted-foreground">Total</span>
+							<p className="text-3xl font-bold text-success">
 								${order.totalPrice.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
 							</p>
 						</div>
@@ -270,7 +270,7 @@ export default function MyOrderDetailPage() {
 											<p className="font-medium">
 												{item.materialType.material.name}
 											</p>
-											<p className="text-xs text-gray-500">
+											<p className="text-xs text-muted-foreground">
 												{item.materialType.height}mm espesor
 											</p>
 										</div>
@@ -299,7 +299,7 @@ export default function MyOrderDetailPage() {
 					<div className="flex justify-end">
 						<div className="w-64 space-y-2">
 							<div className="flex justify-between text-sm">
-								<span className="text-gray-500">Subtotal</span>
+								<span className="text-muted-foreground">Subtotal</span>
 								<span>
 									${order.totalPrice.toLocaleString('es-AR', {
 										minimumFractionDigits: 2,
@@ -309,7 +309,7 @@ export default function MyOrderDetailPage() {
 							<Separator />
 							<div className="flex justify-between font-bold text-lg">
 								<span>Total</span>
-								<span className="text-green-600">
+								<span className="text-success">
 									${order.totalPrice.toLocaleString('es-AR', {
 										minimumFractionDigits: 2,
 									})}
@@ -331,12 +331,12 @@ export default function MyOrderDetailPage() {
 							{order.extras.map((extra) => (
 								<div
 									key={extra.id}
-									className="flex justify-between items-center p-3 bg-gray-50 rounded"
+									className="flex justify-between items-center p-3 bg-muted rounded"
 								>
 									<div>
 										<span className="font-medium">{extra.extraService.name}</span>
 										{extra.extraService.description && (
-											<p className="text-sm text-gray-500">
+											<p className="text-sm text-muted-foreground">
 												{extra.extraService.description}
 											</p>
 										)}
@@ -367,7 +367,7 @@ export default function MyOrderDetailPage() {
 							{order.payments.map((payment) => (
 								<div
 									key={payment.id}
-									className="flex items-center justify-between p-4 bg-gray-50 rounded-lg"
+									className="flex items-center justify-between p-4 bg-muted rounded-lg"
 								>
 									<div className="flex items-center gap-4">
 										{payment.paymentMethod === 'MERCADOPAGO' ? (
@@ -379,7 +379,7 @@ export default function MyOrderDetailPage() {
 											<p className="font-medium">
 												{getPaymentMethodLabel(payment.paymentMethod)}
 											</p>
-											<p className="text-sm text-gray-500">
+											<p className="text-sm text-muted-foreground">
 												${payment.amount.toLocaleString('es-AR', {
 													minimumFractionDigits: 2,
 												})}
@@ -401,7 +401,7 @@ export default function MyOrderDetailPage() {
 							))}
 						</div>
 					) : (
-						<div className="text-center py-8 text-gray-500">
+						<div className="text-center py-8 text-muted-foreground">
 							<CreditCard className="h-12 w-12 mx-auto mb-2 opacity-50" />
 							<p>No hay información de pago disponible</p>
 							{order.status === 'PENDING' && (
@@ -428,13 +428,13 @@ export default function MyOrderDetailPage() {
 							{order.shipments.map((shipment) => (
 								<div
 									key={shipment.id}
-									className="p-4 bg-gray-50 rounded-lg space-y-2"
+									className="p-4 bg-muted rounded-lg space-y-2"
 								>
 									<div className="flex justify-between items-start">
 										<div>
 											<p className="font-medium">Transportista: {shipment.carrier}</p>
 											{shipment.trackingNumber && (
-												<p className="text-sm text-gray-600">
+												<p className="text-sm text-muted-foreground">
 													Número de seguimiento: {shipment.trackingNumber}
 												</p>
 											)}

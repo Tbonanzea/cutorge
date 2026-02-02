@@ -29,7 +29,7 @@ function SuccessContent() {
 				<CardContent className="pt-6">
 					<div className="flex items-center gap-4">
 						<div className="flex-shrink-0">
-							<CheckCircle2 className="h-16 w-16 text-green-600" />
+							<CheckCircle2 className="h-16 w-16 text-success" />
 						</div>
 						<div className="flex-1">
 							<h1 className="text-2xl font-bold text-green-900">
@@ -53,16 +53,16 @@ function SuccessContent() {
 				</CardHeader>
 				<CardContent className="space-y-4">
 					{orderId && (
-						<div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg">
+						<div className="flex items-center justify-between p-4 bg-muted/30 rounded-lg">
 							<div>
-								<p className="text-sm text-gray-600">Numero de Orden</p>
+								<p className="text-sm text-muted-foreground">Numero de Orden</p>
 								<p className="text-xl font-mono font-bold text-slate-900">
 									#{orderId.slice(0, 8).toUpperCase()}
 								</p>
 							</div>
 							{paymentId && (
 								<div className="text-right">
-									<p className="text-sm text-gray-600">ID de Pago</p>
+									<p className="text-sm text-muted-foreground">ID de Pago</p>
 									<p className="text-sm font-mono text-gray-700">
 										{paymentId}
 									</p>
@@ -153,7 +153,7 @@ export default function CheckoutSuccessPage() {
 		<div className="container py-8">
 			<Suspense fallback={
 				<div className="flex items-center justify-center min-h-[400px]">
-					<Loader2 className="h-8 w-8 animate-spin text-gray-500" />
+					<Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
 				</div>
 			}>
 				<SuccessContent />

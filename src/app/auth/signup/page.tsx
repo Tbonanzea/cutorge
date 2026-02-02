@@ -7,9 +7,20 @@ import {
 	CardHeader,
 	CardTitle,
 } from '@/components/ui/card';
+import { Metadata } from 'next';
 import { CheckCircle2 } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
+
+export const metadata: Metadata = {
+	title: 'Crear Cuenta',
+	description:
+		'Crea tu cuenta gratuita en CutForge. Cotiza al instante tus proyectos de corte láser y CNC sin mínimos de pedido.',
+	robots: {
+		index: true,
+		follow: true,
+	},
+};
 
 export default function SignUpPage() {
 	return (

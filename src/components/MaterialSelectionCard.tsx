@@ -38,12 +38,12 @@ export default function MaterialSelectionCard({
 
 	return (
 		<AccordionItem value={`item-${index}`} className='border rounded-lg mb-4'>
-			<AccordionTrigger className='px-4 hover:no-underline hover:bg-slate-50'>
+			<AccordionTrigger className='px-4 hover:no-underline hover:bg-muted/50'>
 				<div className='flex items-center gap-3 w-full'>
 					{isComplete ? (
-						<CheckCircle2 className='h-5 w-5 text-green-600 shrink-0' />
+						<CheckCircle2 className='h-5 w-5 text-success shrink-0' />
 					) : (
-						<AlertCircle className='h-5 w-5 text-amber-600 shrink-0' />
+						<AlertCircle className='h-5 w-5 text-warning shrink-0' />
 					)}
 					<div className='flex-1 text-left'>
 						<p className='font-semibold'>{item.file.filename}</p>
@@ -53,7 +53,7 @@ export default function MaterialSelectionCard({
 								{item.quantity > 1 && ` × ${item.quantity}`}
 							</p>
 						) : (
-							<p className='text-sm text-amber-600'>
+							<p className='text-sm text-warning'>
 								Selecciona material y espesor
 							</p>
 						)}
@@ -106,7 +106,7 @@ export default function MaterialSelectionCard({
 							</Label>
 							<select
 								id={`material-type-${index}`}
-								className='w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary disabled:bg-gray-100 disabled:cursor-not-allowed'
+								className='w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary disabled:bg-muted disabled:cursor-not-allowed'
 								value={item.materialType?.id || ''}
 								onChange={(e) =>
 									onMaterialTypeChange(
@@ -153,12 +153,12 @@ export default function MaterialSelectionCard({
 
 						{/* Price Preview */}
 						{item.materialType && (
-							<div className='mt-4 p-4 bg-slate-50 rounded-md border'>
+							<div className='mt-4 p-4 bg-muted/30 rounded-md border'>
 								<div className='flex justify-between items-center'>
 									<span className='text-sm text-muted-foreground'>
 										Precio estimado:
 									</span>
-									<span className='text-lg font-semibold text-green-600'>
+									<span className='text-lg font-semibold text-success'>
 										$
 										{(
 											item.materialType.pricePerUnit *

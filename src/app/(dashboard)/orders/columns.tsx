@@ -7,28 +7,13 @@ import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { getStatusVariant, getStatusLabel } from '@/lib/status-utils';
 
 type OrderWithUser = Order & {
 	user: Pick<User, 'email' | 'firstName' | 'lastName'>;
 	_count: {
 		items: number;
 	};
-};
-
-const statusColors: Record<OrderStatus, string> = {
-	PENDING: 'bg-yellow-100 text-yellow-800 hover:bg-yellow-100',
-	PAID: 'bg-blue-100 text-blue-800 hover:bg-blue-100',
-	SHIPPED: 'bg-purple-100 text-purple-800 hover:bg-purple-100',
-	COMPLETED: 'bg-green-100 text-green-800 hover:bg-green-100',
-	CANCELLED: 'bg-red-100 text-red-800 hover:bg-red-100',
-};
-
-const statusLabels: Record<OrderStatus, string> = {
-	PENDING: 'Pendiente',
-	PAID: 'Pagado',
-	SHIPPED: 'Enviado',
-	COMPLETED: 'Completado',
-	CANCELLED: 'Cancelado',
 };
 
 export const columns: ColumnDef<OrderWithUser>[] = [
@@ -38,7 +23,7 @@ export const columns: ColumnDef<OrderWithUser>[] = [
 		cell: ({ row }) => {
 			const id = row.original.id;
 			return (
-				<code className="text-xs bg-gray-100 px-2 py-1 rounded">
+				<code className="text-xs bg-muted px-2 py-1 rounded">
 					{id.slice(0, 8)}...
 				</code>
 			);
@@ -82,8 +67,8 @@ export const columns: ColumnDef<OrderWithUser>[] = [
 		cell: ({ row }) => {
 			const status = row.original.status;
 			return (
-				<Badge variant="secondary" className={statusColors[status]}>
-					{statusLabels[status]}
+				<Badge variant={getStatusVariant(status)}>
+					{getStatusLabel(status)}
 				</Badge>
 			);
 		},
@@ -94,7 +79,7 @@ export const columns: ColumnDef<OrderWithUser>[] = [
 		cell: ({ row }) => {
 			const date = new Date(row.original.createdAt);
 			return (
-				<div className="text-sm text-gray-600">
+				<div className="text-sm text-muted-foreground">
 					{formatDistanceToNow(date, { addSuffix: true, locale: es })}
 				</div>
 			);

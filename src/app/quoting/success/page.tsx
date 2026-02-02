@@ -56,7 +56,7 @@ function SuccessContent() {
 				<CardContent className="pt-6">
 					<div className="flex items-center gap-4">
 						<div className="flex-shrink-0">
-							<CheckCircle2 className="h-12 w-12 text-green-600" />
+							<CheckCircle2 className="h-12 w-12 text-success" />
 						</div>
 						<div className="flex-1">
 							<h1 className="text-2xl font-bold text-green-900">
@@ -79,17 +79,17 @@ function SuccessContent() {
 					</CardDescription>
 				</CardHeader>
 				<CardContent className="space-y-4">
-					<div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg">
+					<div className="flex items-center justify-between p-4 bg-muted/30 rounded-lg">
 						<div>
-							<p className="text-sm text-gray-600">Número de Orden</p>
+							<p className="text-sm text-muted-foreground">Número de Orden</p>
 							<p className="text-xl font-mono font-bold text-slate-900">
 								#{orderId.slice(0, 8).toUpperCase()}
 							</p>
 						</div>
 						{orderData && (
 							<div className="text-right">
-								<p className="text-sm text-gray-600">Total Estimado</p>
-								<p className="text-xl font-bold text-green-600">
+								<p className="text-sm text-muted-foreground">Total Estimado</p>
+								<p className="text-xl font-bold text-success">
 									${orderData.totalPrice?.toFixed(2)}
 								</p>
 							</div>

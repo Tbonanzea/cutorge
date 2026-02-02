@@ -6,9 +6,20 @@ import {
 	CardHeader,
 	CardTitle,
 } from '@/components/ui/card';
+import { Metadata } from 'next';
 import { ArrowLeft } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
+
+export const metadata: Metadata = {
+	title: 'Recuperar Contraseña',
+	description:
+		'Recupera el acceso a tu cuenta de CutForge. Te enviaremos un enlace para restablecer tu contraseña.',
+	robots: {
+		index: false,
+		follow: false,
+	},
+};
 
 export default function ForgotPasswordPage() {
 	return (

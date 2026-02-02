@@ -10,9 +10,15 @@ import {
 	TableHeader,
 	TableRow,
 } from '@/components/ui/table';
+import { Metadata } from 'next';
 import { Plus, Pencil } from 'lucide-react';
 import Link from 'next/link';
 import { DeleteMaterialButton } from './delete-button';
+
+export const metadata: Metadata = {
+	title: 'Materiales',
+	description: 'Gestión de materiales disponibles para corte',
+};
 
 export default async function MaterialsPage() {
 	const materials = await getMaterials();
@@ -23,7 +29,7 @@ export default async function MaterialsPage() {
 				<CardHeader className="flex flex-row items-center justify-between">
 					<div>
 						<CardTitle className="text-2xl">Materiales</CardTitle>
-						<p className="text-sm text-gray-500 mt-1">
+						<p className="text-sm text-muted-foreground mt-1">
 							Gestiona los materiales disponibles para corte
 						</p>
 					</div>
@@ -50,7 +56,7 @@ export default async function MaterialsPage() {
 								<TableRow>
 									<TableCell
 										colSpan={5}
-										className="text-center text-gray-500 py-8"
+										className="text-center text-muted-foreground py-8"
 									>
 										No hay materiales registrados
 									</TableCell>
@@ -61,7 +67,7 @@ export default async function MaterialsPage() {
 										<TableCell className="font-medium">
 											{material.name}
 										</TableCell>
-										<TableCell className="text-gray-500">
+										<TableCell className="text-muted-foreground">
 											{material.description || '-'}
 										</TableCell>
 										<TableCell className="text-center">

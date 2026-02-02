@@ -222,7 +222,7 @@ export default function ProfilePage() {
 	if (loading) {
 		return (
 			<div className="flex items-center justify-center h-64">
-				<Loader2 className="h-8 w-8 animate-spin text-gray-500" />
+				<Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
 			</div>
 		);
 	}
@@ -243,9 +243,9 @@ export default function ProfilePage() {
 
 			{/* Success/Error Messages */}
 			{success && (
-				<Alert className="border-green-200 bg-green-50">
-					<CheckCircle2 className="h-4 w-4 text-green-600" />
-					<AlertDescription className="text-green-800">{success}</AlertDescription>
+				<Alert className="border-success/30 bg-success/10">
+					<CheckCircle2 className="h-4 w-4 text-success" />
+					<AlertDescription className="text-success">{success}</AlertDescription>
 				</Alert>
 			)}
 			{error && (
@@ -276,7 +276,7 @@ export default function ProfilePage() {
 									placeholder="Tu nombre"
 								/>
 								{profileErrors.firstName && (
-									<p className="text-sm text-red-600">
+									<p className="text-sm text-destructive">
 										{profileErrors.firstName.message}
 									</p>
 								)}
@@ -291,7 +291,7 @@ export default function ProfilePage() {
 									placeholder="Tu apellido"
 								/>
 								{profileErrors.lastName && (
-									<p className="text-sm text-red-600">
+									<p className="text-sm text-destructive">
 										{profileErrors.lastName.message}
 									</p>
 								)}
@@ -305,9 +305,9 @@ export default function ProfilePage() {
 								type="email"
 								value={profile?.email || ''}
 								disabled
-								className="bg-gray-50"
+								className="bg-muted"
 							/>
-							<p className="text-xs text-gray-500">
+							<p className="text-xs text-muted-foreground">
 								El email no se puede cambiar
 							</p>
 						</div>
@@ -348,15 +348,15 @@ export default function ProfilePage() {
 							files.length > 0 ? (
 								<div className="space-y-2">
 									{files.map((file) => (
-										<Card key={file.id} className="bg-gray-50">
+										<Card key={file.id} className="bg-muted">
 											<CardContent className="p-4">
 												<div className="flex justify-between items-start">
 													<div className="flex-1">
 														<div className="flex items-center gap-2 mb-1">
-															<FileText className="h-4 w-4 text-gray-500" />
+															<FileText className="h-4 w-4 text-muted-foreground" />
 															<span className="font-medium">{file.filename}</span>
 														</div>
-														<p className="text-xs text-gray-500">
+														<p className="text-xs text-muted-foreground">
 															Subido el {format(new Date(file.uploadedAt), "d 'de' MMMM, yyyy", { locale: es })}
 														</p>
 														{file.orderItems && file.orderItems.length > 0 && (
@@ -396,14 +396,14 @@ export default function ProfilePage() {
 									))}
 								</div>
 							) : (
-								<div className="text-center py-8 text-gray-500">
+								<div className="text-center py-8 text-muted-foreground">
 									<FileText className="h-12 w-12 mx-auto mb-2 opacity-50" />
 									<p>No has subido archivos todavía</p>
 								</div>
 							)
 						) : (
 							<div className="flex items-center justify-center py-8">
-								<Loader2 className="h-8 w-8 animate-spin text-gray-500" />
+								<Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
 							</div>
 						)}
 					</CardContent>
@@ -438,7 +438,7 @@ export default function ProfilePage() {
 				<CardContent className="space-y-4">
 					{/* Address Form */}
 					{showAddressForm && (
-						<Card className="bg-gray-50">
+						<Card className="bg-muted">
 							<CardHeader>
 								<CardTitle className="text-lg">
 									{editingAddress ? 'Editar Dirección' : 'Nueva Dirección'}
@@ -459,7 +459,7 @@ export default function ProfilePage() {
 											placeholder="Ej: Av. Corrientes 1234"
 										/>
 										{addressErrors.street && (
-											<p className="text-sm text-red-600">
+											<p className="text-sm text-destructive">
 												{addressErrors.street.message}
 											</p>
 										)}
@@ -476,7 +476,7 @@ export default function ProfilePage() {
 												placeholder="Ej: Buenos Aires"
 											/>
 											{addressErrors.city && (
-												<p className="text-sm text-red-600">
+												<p className="text-sm text-destructive">
 													{addressErrors.city.message}
 												</p>
 											)}
@@ -491,7 +491,7 @@ export default function ProfilePage() {
 												placeholder="Ej: CABA"
 											/>
 											{addressErrors.state && (
-												<p className="text-sm text-red-600">
+												<p className="text-sm text-destructive">
 													{addressErrors.state.message}
 												</p>
 											)}
@@ -509,7 +509,7 @@ export default function ProfilePage() {
 												placeholder="Ej: C1043"
 											/>
 											{addressErrors.zip && (
-												<p className="text-sm text-red-600">
+												<p className="text-sm text-destructive">
 													{addressErrors.zip.message}
 												</p>
 											)}
@@ -524,7 +524,7 @@ export default function ProfilePage() {
 												placeholder="Ej: Argentina"
 											/>
 											{addressErrors.country && (
-												<p className="text-sm text-red-600">
+												<p className="text-sm text-destructive">
 													{addressErrors.country.message}
 												</p>
 											)}
@@ -560,21 +560,21 @@ export default function ProfilePage() {
 										<div className="flex justify-between items-start">
 											<div className="flex-1">
 												<div className="flex items-center gap-2 mb-2">
-													<MapPin className="h-4 w-4 text-gray-500" />
+													<MapPin className="h-4 w-4 text-muted-foreground" />
 													<span className="font-medium">
 														{address.street}
 													</span>
 													{address.isDefault && (
-														<Badge variant="secondary" className="bg-blue-100 text-blue-800">
+														<Badge variant="info">
 															<Star className="h-3 w-3 mr-1" />
 															Predeterminada
 														</Badge>
 													)}
 												</div>
-												<p className="text-sm text-gray-600">
+												<p className="text-sm text-muted-foreground">
 													{address.city}, {address.state} {address.zip}
 												</p>
-												<p className="text-sm text-gray-600">
+												<p className="text-sm text-muted-foreground">
 													{address.country}
 												</p>
 											</div>
@@ -603,7 +603,7 @@ export default function ProfilePage() {
 													size="sm"
 													onClick={() => handleDeleteAddress(address.id)}
 													disabled={updating}
-													className="text-red-600 hover:text-red-700"
+													className="text-destructive hover:text-red-700"
 												>
 													<Trash2 className="h-4 w-4" />
 												</Button>
@@ -615,7 +615,7 @@ export default function ProfilePage() {
 						</div>
 					) : (
 						!showAddressForm && (
-							<div className="text-center py-8 text-gray-500">
+							<div className="text-center py-8 text-muted-foreground">
 								<MapPin className="h-12 w-12 mx-auto mb-2 opacity-50" />
 								<p>No tienes direcciones guardadas</p>
 								<p className="text-sm mt-2">

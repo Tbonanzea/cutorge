@@ -120,7 +120,7 @@ export default function OrderDetailPage() {
 	if (loading) {
 		return (
 			<div className="flex items-center justify-center h-64">
-				<Loader2 className="h-8 w-8 animate-spin text-gray-500" />
+				<Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
 			</div>
 		);
 	}
@@ -130,7 +130,7 @@ export default function OrderDetailPage() {
 			<div className="container mx-auto py-10">
 				<Card>
 					<CardContent className="py-10">
-						<div className="text-center text-red-600">
+						<div className="text-center text-destructive">
 							{error || 'Orden no encontrada'}
 						</div>
 						<div className="text-center mt-4">
@@ -159,9 +159,9 @@ export default function OrderDetailPage() {
 	const getPaymentStatusIcon = (status: string) => {
 		switch (status) {
 			case 'COMPLETED':
-				return <CheckCircle2 className="h-4 w-4 text-green-600" />;
+				return <CheckCircle2 className="h-4 w-4 text-success" />;
 			case 'FAILED':
-				return <XCircle className="h-4 w-4 text-red-600" />;
+				return <XCircle className="h-4 w-4 text-destructive" />;
 			default:
 				return <Clock className="h-4 w-4 text-yellow-600" />;
 		}
@@ -199,7 +199,7 @@ export default function OrderDetailPage() {
 			)}
 			{success && (
 				<Alert className="border-green-200 bg-green-50">
-					<CheckCircle2 className="h-4 w-4 text-green-600" />
+					<CheckCircle2 className="h-4 w-4 text-success" />
 					<AlertDescription className="text-green-800">{success}</AlertDescription>
 				</Alert>
 			)}
@@ -248,11 +248,11 @@ export default function OrderDetailPage() {
 					</CardHeader>
 					<CardContent className="space-y-3">
 						<div>
-							<span className="text-sm text-gray-500">ID completo</span>
+							<span className="text-sm text-muted-foreground">ID completo</span>
 							<p className="font-mono text-sm">{order.id}</p>
 						</div>
 						<div>
-							<span className="text-sm text-gray-500">Fecha de creación</span>
+							<span className="text-sm text-muted-foreground">Fecha de creación</span>
 							<p>
 								{format(new Date(order.createdAt), "d 'de' MMMM, yyyy HH:mm", {
 									locale: es,
@@ -266,7 +266,7 @@ export default function OrderDetailPage() {
 							</p>
 						</div>
 						<div>
-							<span className="text-sm text-gray-500">Última actualización</span>
+							<span className="text-sm text-muted-foreground">Última actualización</span>
 							<p className="text-sm">
 								{formatDistanceToNow(new Date(order.updatedAt), {
 									addSuffix: true,
@@ -284,7 +284,7 @@ export default function OrderDetailPage() {
 					</CardHeader>
 					<CardContent className="space-y-3">
 						<div>
-							<span className="text-sm text-gray-500">Nombre</span>
+							<span className="text-sm text-muted-foreground">Nombre</span>
 							<p className="font-medium">
 								{order.user.firstName && order.user.lastName
 									? `${order.user.firstName} ${order.user.lastName}`
@@ -292,7 +292,7 @@ export default function OrderDetailPage() {
 							</p>
 						</div>
 						<div>
-							<span className="text-sm text-gray-500">Email</span>
+							<span className="text-sm text-muted-foreground">Email</span>
 							<p>{order.user.email}</p>
 						</div>
 						<Button asChild variant="outline" size="sm" className="w-full">
@@ -310,13 +310,13 @@ export default function OrderDetailPage() {
 					</CardHeader>
 					<CardContent className="space-y-3">
 						<div>
-							<span className="text-sm text-gray-500">Total de items</span>
+							<span className="text-sm text-muted-foreground">Total de items</span>
 							<p className="text-2xl font-bold">{order.items.length}</p>
 						</div>
 						<Separator />
 						<div>
-							<span className="text-sm text-gray-500">Total</span>
-							<p className="text-3xl font-bold text-green-600">
+							<span className="text-sm text-muted-foreground">Total</span>
+							<p className="text-3xl font-bold text-success">
 								${order.totalPrice.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
 							</p>
 						</div>
@@ -368,7 +368,7 @@ export default function OrderDetailPage() {
 											<p className="font-medium">
 												{item.materialType.material.name}
 											</p>
-											<p className="text-xs text-gray-500">
+											<p className="text-xs text-muted-foreground">
 												{item.materialType.height}mm espesor
 											</p>
 										</div>
@@ -397,7 +397,7 @@ export default function OrderDetailPage() {
 					<div className="flex justify-end">
 						<div className="w-64 space-y-2">
 							<div className="flex justify-between text-sm">
-								<span className="text-gray-500">Subtotal</span>
+								<span className="text-muted-foreground">Subtotal</span>
 								<span>
 									${order.totalPrice.toLocaleString('es-AR', {
 										minimumFractionDigits: 2,
@@ -407,7 +407,7 @@ export default function OrderDetailPage() {
 							<Separator />
 							<div className="flex justify-between font-bold text-lg">
 								<span>Total</span>
-								<span className="text-green-600">
+								<span className="text-success">
 									${order.totalPrice.toLocaleString('es-AR', {
 										minimumFractionDigits: 2,
 									})}
@@ -432,7 +432,7 @@ export default function OrderDetailPage() {
 							{order.payments.map((payment) => (
 								<div
 									key={payment.id}
-									className="flex items-center justify-between p-4 bg-gray-50 rounded-lg"
+									className="flex items-center justify-between p-4 bg-muted rounded-lg"
 								>
 									<div className="flex items-center gap-4">
 										{payment.paymentMethod === 'MERCADOPAGO' ? (
@@ -444,7 +444,7 @@ export default function OrderDetailPage() {
 											<p className="font-medium">
 												{getPaymentMethodLabel(payment.paymentMethod)}
 											</p>
-											<p className="text-sm text-gray-500">
+											<p className="text-sm text-muted-foreground">
 												${payment.amount.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
 											</p>
 											{payment.paidAt && (
@@ -478,7 +478,7 @@ export default function OrderDetailPage() {
 							))}
 						</div>
 					) : (
-						<div className="text-center py-8 text-gray-500">
+						<div className="text-center py-8 text-muted-foreground">
 							<CreditCard className="h-12 w-12 mx-auto mb-2 opacity-50" />
 							<p>No hay pagos registrados para esta orden</p>
 							{order.status === 'PENDING' && (
@@ -500,7 +500,7 @@ export default function OrderDetailPage() {
 					<CardContent>
 						<div className="space-y-2">
 							{order.extras.map((extra) => (
-								<div key={extra.id} className="flex justify-between items-center p-3 bg-gray-50 rounded">
+								<div key={extra.id} className="flex justify-between items-center p-3 bg-muted rounded">
 									<span>{extra.extraService.name}</span>
 									<span className="font-medium">
 										${extra.priceAtOrder.toLocaleString('es-AR', { minimumFractionDigits: 2 })}

@@ -1,9 +1,32 @@
 'use client';
 
 import { useState } from 'react';
-import DXFViewerSimple from './DXFViewer2D';
-import DXFViewer3D from './DXFViewer3D';
+import dynamic from 'next/dynamic';
 import { Button } from './ui/button';
+import { Loader2 } from 'lucide-react';
+
+// Loading skeleton for the DXF viewer
+function ViewerSkeleton() {
+	return (
+		<div className='w-full border border-border rounded-md overflow-hidden bg-gray-100 flex items-center justify-center' style={{ minHeight: '400px' }}>
+			<div className='flex flex-col items-center gap-3 text-muted-foreground'>
+				<Loader2 className='h-8 w-8 animate-spin' />
+				<span className='text-sm'>Cargando visualizador...</span>
+			</div>
+		</div>
+	);
+}
+
+// Lazy load the heavy Three.js viewers - only loaded when needed
+const DXFViewerSimple = dynamic(() => import('./DXFViewer2D'), {
+	loading: () => <ViewerSkeleton />,
+	ssr: false,
+});
+
+const DXFViewer3D = dynamic(() => import('./DXFViewer3D'), {
+	loading: () => <ViewerSkeleton />,
+	ssr: false,
+});
 
 interface DXFViewerToggleProps {
 	dxfUrl?: string;
@@ -21,9 +44,9 @@ export default function DXFViewerToggle({
 	if (!dxfUrl) {
 		return (
 			<div
-				className={`flex items-center justify-center p-8 border-2 border-dashed border-gray-300 rounded-lg bg-gray-50 ${className}`}
+				className={`flex items-center justify-center p-8 border-2 border-dashed border-border rounded-lg bg-muted ${className}`}
 			>
-				<p className='text-sm text-gray-500'>
+				<p className='text-sm text-muted-foreground'>
 					No se pudo cargar la vista previa del archivo
 				</p>
 			</div>

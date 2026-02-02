@@ -58,7 +58,7 @@ export default function EditExtraPage() {
 	if (loading) {
 		return (
 			<div className="flex items-center justify-center h-64">
-				<Loader2 className="h-8 w-8 animate-spin text-gray-500" />
+				<Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
 			</div>
 		);
 	}
@@ -68,7 +68,7 @@ export default function EditExtraPage() {
 			<div className="container mx-auto py-10">
 				<Card>
 					<CardContent className="py-10 text-center">
-						<p className="text-red-600">Servicio no encontrado</p>
+						<p className="text-destructive">Servicio no encontrado</p>
 						<Button asChild variant="outline" className="mt-4">
 							<Link href="/extras">Volver a extras</Link>
 						</Button>

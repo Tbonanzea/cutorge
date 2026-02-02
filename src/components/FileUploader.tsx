@@ -285,9 +285,9 @@ function FileUploader() {
 										}`}
 									>
 										{isValid ? (
-											<CheckCircle2 className='h-5 w-5 mr-3 text-green-600 flex-shrink-0 mt-0.5' />
+											<CheckCircle2 className='h-5 w-5 mr-3 text-success flex-shrink-0 mt-0.5' />
 										) : isInvalid ? (
-											<AlertCircle className='h-5 w-5 mr-3 text-red-600 flex-shrink-0 mt-0.5' />
+											<AlertCircle className='h-5 w-5 mr-3 text-destructive flex-shrink-0 mt-0.5' />
 										) : (
 											<LucideFile className='h-5 w-5 mr-3 text-blue-500 flex-shrink-0 mt-0.5' />
 										)}
@@ -314,7 +314,7 @@ function FileUploader() {
 												item.file._validationErrors &&
 												item.file._validationErrors
 													.length > 0 && (
-													<div className='mt-2 text-xs text-red-600'>
+													<div className='mt-2 text-xs text-destructive'>
 														<p className='font-medium'>
 															Errores de validación:
 														</p>
@@ -437,7 +437,7 @@ function FileUploader() {
 						<div className='flex items-center justify-between text-sm'>
 							<div className='flex items-center gap-4'>
 								<div className='flex items-center gap-2'>
-									<CheckCircle2 className='h-4 w-4 text-green-600' />
+									<CheckCircle2 className='h-4 w-4 text-success' />
 									<span>
 										{
 											cart.items.filter(
@@ -450,7 +450,7 @@ function FileUploader() {
 									</span>
 								</div>
 								<div className='flex items-center gap-2'>
-									<AlertCircle className='h-4 w-4 text-red-600' />
+									<AlertCircle className='h-4 w-4 text-destructive' />
 									<span>
 										{
 											cart.items.filter(
@@ -466,7 +466,7 @@ function FileUploader() {
 							{cart.items.some(
 								(item) => item.file._validationStatus === 'invalid'
 							) && (
-								<p className='text-xs text-red-600 font-medium'>
+								<p className='text-xs text-destructive font-medium'>
 									Elimina los archivos inválidos para continuar
 								</p>
 							)}

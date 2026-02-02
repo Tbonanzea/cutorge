@@ -177,7 +177,7 @@ function CheckoutContent() {
 	if (loading) {
 		return (
 			<div className="flex items-center justify-center min-h-[400px]">
-				<Loader2 className="h-8 w-8 animate-spin text-gray-500" />
+				<Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
 			</div>
 		);
 	}
@@ -228,7 +228,7 @@ function CheckoutContent() {
 				</Button>
 				<div>
 					<h1 className="text-2xl font-bold">Checkout</h1>
-					<p className="text-gray-600">
+					<p className="text-muted-foreground">
 						Orden #{orderId.slice(0, 8).toUpperCase()}
 					</p>
 				</div>
@@ -267,11 +267,11 @@ function CheckoutContent() {
 									</div>
 									<div className="flex-1">
 										<h3 className="font-semibold">MercadoPago</h3>
-										<p className="text-sm text-gray-600">
+										<p className="text-sm text-muted-foreground">
 											Tarjeta de credito, debito, efectivo y mas
 										</p>
 									</div>
-									<div className="flex items-center gap-1 text-xs text-green-600">
+									<div className="flex items-center gap-1 text-xs text-success">
 										<ShieldCheck className="h-4 w-4" />
 										Seguro
 									</div>
@@ -293,7 +293,7 @@ function CheckoutContent() {
 									</div>
 									<div className="flex-1">
 										<h3 className="font-semibold">Transferencia Bancaria</h3>
-										<p className="text-sm text-gray-600">
+										<p className="text-sm text-muted-foreground">
 											Transferencia directa a nuestra cuenta
 										</p>
 									</div>
@@ -305,7 +305,7 @@ function CheckoutContent() {
 							{/* Payment Action */}
 							{selectedMethod === 'mercadopago' && (
 								<div className="space-y-4">
-									<p className="text-sm text-gray-600">
+									<p className="text-sm text-muted-foreground">
 										Seras redirigido a MercadoPago para completar tu pago de forma segura.
 									</p>
 									<Button
@@ -337,9 +337,9 @@ function CheckoutContent() {
 										</AlertDescription>
 									</Alert>
 
-									<div className="bg-gray-50 rounded-lg p-4 space-y-3">
+									<div className="bg-muted rounded-lg p-4 space-y-3">
 										<div className="flex justify-between items-center">
-											<span className="text-sm text-gray-600">Titular</span>
+											<span className="text-sm text-muted-foreground">Titular</span>
 											<div className="flex items-center gap-2">
 												<span className="font-medium">{bankInfo.holder}</span>
 												<Button
@@ -348,7 +348,7 @@ function CheckoutContent() {
 													onClick={() => copyToClipboard(bankInfo.holder, 'holder')}
 												>
 													{copiedField === 'holder' ? (
-														<Check className="h-4 w-4 text-green-600" />
+														<Check className="h-4 w-4 text-success" />
 													) : (
 														<Copy className="h-4 w-4" />
 													)}
@@ -356,11 +356,11 @@ function CheckoutContent() {
 											</div>
 										</div>
 										<div className="flex justify-between items-center">
-											<span className="text-sm text-gray-600">Banco</span>
+											<span className="text-sm text-muted-foreground">Banco</span>
 											<span className="font-medium">{bankInfo.bank}</span>
 										</div>
 										<div className="flex justify-between items-center">
-											<span className="text-sm text-gray-600">CBU</span>
+											<span className="text-sm text-muted-foreground">CBU</span>
 											<div className="flex items-center gap-2">
 												<span className="font-mono font-medium">{bankInfo.cbu}</span>
 												<Button
@@ -369,7 +369,7 @@ function CheckoutContent() {
 													onClick={() => copyToClipboard(bankInfo.cbu, 'cbu')}
 												>
 													{copiedField === 'cbu' ? (
-														<Check className="h-4 w-4 text-green-600" />
+														<Check className="h-4 w-4 text-success" />
 													) : (
 														<Copy className="h-4 w-4" />
 													)}
@@ -377,7 +377,7 @@ function CheckoutContent() {
 											</div>
 										</div>
 										<div className="flex justify-between items-center">
-											<span className="text-sm text-gray-600">Alias</span>
+											<span className="text-sm text-muted-foreground">Alias</span>
 											<div className="flex items-center gap-2">
 												<span className="font-medium">{bankInfo.alias}</span>
 												<Button
@@ -386,7 +386,7 @@ function CheckoutContent() {
 													onClick={() => copyToClipboard(bankInfo.alias, 'alias')}
 												>
 													{copiedField === 'alias' ? (
-														<Check className="h-4 w-4 text-green-600" />
+														<Check className="h-4 w-4 text-success" />
 													) : (
 														<Copy className="h-4 w-4" />
 													)}
@@ -395,9 +395,9 @@ function CheckoutContent() {
 										</div>
 										<Separator />
 										<div className="flex justify-between items-center">
-											<span className="text-sm text-gray-600">Monto a transferir</span>
+											<span className="text-sm text-muted-foreground">Monto a transferir</span>
 											<div className="flex items-center gap-2">
-												<span className="font-bold text-lg text-green-600">
+												<span className="font-bold text-lg text-success">
 													${orderData.totalPrice.toFixed(2)}
 												</span>
 												<Button
@@ -406,7 +406,7 @@ function CheckoutContent() {
 													onClick={() => copyToClipboard(orderData.totalPrice.toFixed(2), 'amount')}
 												>
 													{copiedField === 'amount' ? (
-														<Check className="h-4 w-4 text-green-600" />
+														<Check className="h-4 w-4 text-success" />
 													) : (
 														<Copy className="h-4 w-4" />
 													)}
@@ -459,7 +459,7 @@ function CheckoutContent() {
 											<p className="font-medium truncate">
 												{item.file.filename}
 											</p>
-											<p className="text-gray-500 text-xs">
+											<p className="text-muted-foreground text-xs">
 												{item.materialType.material.name} x{item.quantity}
 											</p>
 										</div>
@@ -473,7 +473,7 @@ function CheckoutContent() {
 								<>
 									<Separator />
 									<div className="space-y-2">
-										<p className="text-sm font-medium text-gray-500">Extras</p>
+										<p className="text-sm font-medium text-muted-foreground">Extras</p>
 										{orderData.extras.map((extra) => (
 											<div key={extra.id} className="flex justify-between text-sm">
 												<span>{extra.extraService.name}</span>
@@ -489,19 +489,19 @@ function CheckoutContent() {
 							{/* Totals */}
 							<div className="space-y-2">
 								<div className="flex justify-between text-sm">
-									<span className="text-gray-600">Subtotal Items</span>
+									<span className="text-muted-foreground">Subtotal Items</span>
 									<span>${itemsTotal.toFixed(2)}</span>
 								</div>
 								{extrasTotal > 0 && (
 									<div className="flex justify-between text-sm">
-										<span className="text-gray-600">Subtotal Extras</span>
+										<span className="text-muted-foreground">Subtotal Extras</span>
 										<span>${extrasTotal.toFixed(2)}</span>
 									</div>
 								)}
 								<Separator />
 								<div className="flex justify-between font-bold text-lg">
 									<span>Total</span>
-									<span className="text-green-600">
+									<span className="text-success">
 										${orderData.totalPrice.toFixed(2)}
 									</span>
 								</div>
@@ -510,7 +510,7 @@ function CheckoutContent() {
 					</Card>
 
 					{/* Security Badge */}
-					<div className="flex items-center justify-center gap-2 text-sm text-gray-500">
+					<div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
 						<ShieldCheck className="h-4 w-4" />
 						<span>Pago 100% seguro</span>
 					</div>
@@ -525,7 +525,7 @@ export default function CheckoutPage() {
 		<div className="container py-8">
 			<Suspense fallback={
 				<div className="flex items-center justify-center min-h-[400px]">
-					<Loader2 className="h-8 w-8 animate-spin text-gray-500" />
+					<Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
 				</div>
 			}>
 				<CheckoutContent />

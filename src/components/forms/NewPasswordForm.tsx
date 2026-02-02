@@ -106,7 +106,7 @@ export default function NewPasswordForm({
 					<p className='text-red-500'>{(error as Error).message}</p>
 				)}
 				{isSuccess && (
-					<p className='text-green-600'>
+					<p className='text-success'>
 						¡Contraseña cambiada con éxito!
 					</p>
 				)}

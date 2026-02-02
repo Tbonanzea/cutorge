@@ -10,9 +10,15 @@ import {
 	TableHeader,
 	TableRow,
 } from '@/components/ui/table';
+import { Metadata } from 'next';
 import { Plus } from 'lucide-react';
 import { ExtraServiceActions } from './extra-actions';
 import Link from 'next/link';
+
+export const metadata: Metadata = {
+	title: 'Extras',
+	description: 'Gestión de servicios adicionales',
+};
 
 export default async function ExtrasPage() {
 	const extras = await getExtraServices();
@@ -29,7 +35,7 @@ export default async function ExtrasPage() {
 				<CardHeader className="flex flex-row items-center justify-between">
 					<div>
 						<CardTitle className="text-2xl">Servicios Adicionales</CardTitle>
-						<p className="text-sm text-gray-500 mt-1">
+						<p className="text-sm text-muted-foreground mt-1">
 							Gestiona los extras disponibles para las órdenes
 						</p>
 					</div>
@@ -58,7 +64,7 @@ export default async function ExtrasPage() {
 								<TableRow>
 									<TableCell
 										colSpan={7}
-										className="text-center text-gray-500 py-8"
+										className="text-center text-muted-foreground py-8"
 									>
 										No hay servicios adicionales configurados
 									</TableCell>
@@ -70,7 +76,7 @@ export default async function ExtrasPage() {
 										className={!extra.isActive ? 'opacity-50' : ''}
 									>
 										<TableCell className="font-medium">{extra.name}</TableCell>
-										<TableCell className="text-gray-500 max-w-xs truncate">
+										<TableCell className="text-muted-foreground max-w-xs truncate">
 											{extra.description || '-'}
 										</TableCell>
 										<TableCell className="text-right font-semibold">
@@ -85,7 +91,7 @@ export default async function ExtrasPage() {
 												className={
 													extra.isActive
 														? 'bg-green-100 text-green-800'
-														: 'bg-gray-100 text-gray-600'
+														: 'bg-muted text-muted-foreground'
 												}
 											>
 												{extra.isActive ? 'Activo' : 'Inactivo'}
@@ -108,19 +114,19 @@ export default async function ExtrasPage() {
 						</TableBody>
 					</Table>
 
-					<div className="mt-6 p-4 bg-gray-50 rounded-lg">
+					<div className="mt-6 p-4 bg-muted rounded-lg">
 						<h4 className="font-medium mb-2">Resumen</h4>
 						<div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
 							<div>
-								<span className="text-gray-500">Total de servicios:</span>
+								<span className="text-muted-foreground">Total de servicios:</span>
 								<p className="font-semibold">{extras.length}</p>
 							</div>
 							<div>
-								<span className="text-gray-500">Servicios activos:</span>
+								<span className="text-muted-foreground">Servicios activos:</span>
 								<p className="font-semibold">{activeCount}</p>
 							</div>
 							<div>
-								<span className="text-gray-500">Precio promedio:</span>
+								<span className="text-muted-foreground">Precio promedio:</span>
 								<p className="font-semibold">
 									$
 									{extras.length > 0
@@ -132,8 +138,8 @@ export default async function ExtrasPage() {
 								</p>
 							</div>
 							<div>
-								<span className="text-gray-500">Ingresos por extras:</span>
-								<p className="font-semibold text-green-600">
+								<span className="text-muted-foreground">Ingresos por extras:</span>
+								<p className="font-semibold text-success">
 									${totalRevenue.toLocaleString('es-AR')}
 								</p>
 							</div>

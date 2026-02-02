@@ -2,11 +2,17 @@ import { getMyOrders } from '@/app/(dashboard)/my-orders/actions';
 import { columns } from './columns';
 import { DataTable } from '@/app/(dashboard)/users/data-table';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Metadata } from 'next';
 import { OrderStatus } from '@prisma/client';
 import { Suspense } from 'react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import OrdersFilter from './orders-filter';
+
+export const metadata: Metadata = {
+	title: 'Mis Órdenes',
+	description: 'Historial de tus órdenes y pedidos',
+};
 
 export default async function MyOrdersPage({
 	searchParams,
@@ -38,7 +44,7 @@ export default async function MyOrdersPage({
 
 					{orders.length === 0 ? (
 						<div className="text-center py-12">
-							<p className="text-gray-500 mb-4">No tienes órdenes todavía</p>
+							<p className="text-muted-foreground mb-4">No tienes órdenes todavía</p>
 							<Button asChild>
 								<Link href="/quoting">Crear cotización</Link>
 							</Button>

@@ -124,7 +124,7 @@ export default function LogInForm() {
 					</p>
 				)}
 				{isSuccess && (
-					<p className='text-green-600 mt-2'>
+					<p className='text-success mt-2'>
 						{JSON.stringify(data)}
 					</p>
 				)}

@@ -38,6 +38,9 @@ export function useLogInMutation() {
 	const router = useRouter();
 	return useMutation({
 		mutationFn: (formData: LogInData) => logInApiCall(formData),
-		onSuccess: () => router.push('/'),
+		onSuccess: () => {
+			router.refresh();
+			router.push('/');
+		},
 	});
 }

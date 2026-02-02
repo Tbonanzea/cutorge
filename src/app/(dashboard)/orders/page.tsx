@@ -2,9 +2,15 @@ import { getPaginatedOrders } from '@/app/(dashboard)/orders/actions';
 import { columns } from './columns';
 import { DataTable } from '@/app/(dashboard)/users/data-table';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Metadata } from 'next';
 import { OrderStatus } from '@prisma/client';
 import { Suspense } from 'react';
 import OrdersFilter from './orders-filter';
+
+export const metadata: Metadata = {
+	title: 'Órdenes',
+	description: 'Gestión de todas las órdenes',
+};
 
 export default async function OrdersPage({
 	searchParams,
