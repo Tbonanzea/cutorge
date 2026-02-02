@@ -9,14 +9,28 @@ import {
 	SheetTitle,
 	SheetTrigger,
 } from '@/components/ui/sheet';
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuLabel,
+	DropdownMenuSeparator,
+	DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+	Avatar,
+	AvatarFallback,
+	AvatarImage,
+} from '@/components/ui/avatar';
 import { LayoutDashboard, LogOut, Menu } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState } from 'react';
+import type { UserData } from './Header';
 
 interface NavBarProps {
-	isAdmin?: boolean;
+	user: UserData | null;
 }
 
 const navLinks = [
@@ -25,7 +39,28 @@ const navLinks = [
 	{ href: '/about', label: 'Acerca de' },
 ];
 
-export default function NavBar({ isAdmin = false }: NavBarProps) {
+function getUserInitials(user: UserData): string {
+	if (user.firstName && user.lastName) {
+		return `${user.firstName[0]}${user.lastName[0]}`.toUpperCase();
+	}
+	if (user.firstName) {
+		return user.firstName[0].toUpperCase();
+	}
+	// Fallback to email first letter
+	return user.email[0].toUpperCase();
+}
+
+function getUserDisplayName(user: UserData): string {
+	if (user.firstName && user.lastName) {
+		return `${user.firstName} ${user.lastName}`;
+	}
+	if (user.firstName) {
+		return user.firstName;
+	}
+	return user.email;
+}
+
+export default function NavBar({ user }: NavBarProps) {
 	const [open, setOpen] = useState(false);
 	const pathname = usePathname();
 
@@ -63,7 +98,7 @@ export default function NavBar({ isAdmin = false }: NavBarProps) {
 						{link.label}
 					</Link>
 				))}
-				{isAdmin && (
+				{user?.isAdmin && (
 					<Link
 						href='/dashboard'
 						className={`px-4 py-2 text-sm font-medium rounded-md transition-colors flex items-center gap-1.5 ${
@@ -76,17 +111,50 @@ export default function NavBar({ isAdmin = false }: NavBarProps) {
 						Admin
 					</Link>
 				)}
-				<div className='ml-2 pl-2 border-l'>
-					<Button
-						variant='outline'
-						size='sm'
-						onClick={() => signOut()}
-						className='gap-2'
-					>
-						<LogOut className='size-4' />
-						Salir
-					</Button>
-				</div>
+				{user ? (
+					<div className='ml-2 pl-2 border-l'>
+						<DropdownMenu>
+							<DropdownMenuTrigger asChild>
+								<Button
+									variant='ghost'
+									className='relative h-9 w-9 rounded-full'
+									aria-label='Menú de usuario'
+								>
+									<Avatar size='sm'>
+										<AvatarImage src='' alt={getUserDisplayName(user)} />
+										<AvatarFallback>{getUserInitials(user)}</AvatarFallback>
+									</Avatar>
+								</Button>
+							</DropdownMenuTrigger>
+							<DropdownMenuContent align='end' className='w-56'>
+								<DropdownMenuLabel className='font-normal'>
+									<div className='flex flex-col gap-1'>
+										<p className='text-sm font-medium leading-none'>
+											{getUserDisplayName(user)}
+										</p>
+										<p className='text-xs leading-none text-muted-foreground'>
+											{user.email}
+										</p>
+									</div>
+								</DropdownMenuLabel>
+								<DropdownMenuSeparator />
+								<DropdownMenuItem onClick={() => signOut()}>
+									<LogOut className='mr-2 size-4' />
+									<span>Cerrar sesión</span>
+								</DropdownMenuItem>
+							</DropdownMenuContent>
+						</DropdownMenu>
+					</div>
+				) : (
+					<div className='ml-2 pl-2 border-l flex items-center gap-2'>
+						<Button asChild variant='ghost' size='sm'>
+							<Link href='/auth/login'>Iniciar sesión</Link>
+						</Button>
+						<Button asChild variant='default' size='sm'>
+							<Link href='/auth/signup'>Registrarse</Link>
+						</Button>
+					</div>
+				)}
 			</div>
 
 			{/* Mobile Menu */}
@@ -123,7 +191,7 @@ export default function NavBar({ isAdmin = false }: NavBarProps) {
 								{link.label}
 							</Link>
 						))}
-						{isAdmin && (
+						{user?.isAdmin && (
 							<Link
 								href='/dashboard'
 								onClick={() => setOpen(false)}
@@ -137,19 +205,50 @@ export default function NavBar({ isAdmin = false }: NavBarProps) {
 								Admin
 							</Link>
 						)}
-						<div className='mt-4 pt-4 border-t'>
-							<Button
-								variant='outline'
-								className='w-full justify-start gap-2'
-								onClick={() => {
-									setOpen(false);
-									signOut();
-								}}
-							>
-								<LogOut className='size-4' />
-								Cerrar sesión
-							</Button>
-						</div>
+						{user ? (
+							<div className='mt-4 pt-4 border-t'>
+								<div className='px-4 py-2 mb-2'>
+									<div className='flex items-center gap-3'>
+										<Avatar size='default'>
+											<AvatarImage src='' alt={getUserDisplayName(user)} />
+											<AvatarFallback>{getUserInitials(user)}</AvatarFallback>
+										</Avatar>
+										<div className='flex flex-col gap-0.5 min-w-0'>
+											<p className='text-sm font-medium leading-none truncate'>
+												{getUserDisplayName(user)}
+											</p>
+											<p className='text-xs leading-none text-muted-foreground truncate'>
+												{user.email}
+											</p>
+										</div>
+									</div>
+								</div>
+								<Button
+									variant='outline'
+									className='w-full justify-start gap-2'
+									onClick={() => {
+										setOpen(false);
+										signOut();
+									}}
+								>
+									<LogOut className='size-4' />
+									Cerrar sesión
+								</Button>
+							</div>
+						) : (
+							<div className='mt-4 pt-4 border-t flex flex-col gap-2'>
+								<Button asChild variant='outline' className='w-full'>
+									<Link href='/auth/login' onClick={() => setOpen(false)}>
+										Iniciar sesión
+									</Link>
+								</Button>
+								<Button asChild variant='default' className='w-full'>
+									<Link href='/auth/signup' onClick={() => setOpen(false)}>
+										Registrarse
+									</Link>
+								</Button>
+							</div>
+						)}
 					</div>
 				</SheetContent>
 			</Sheet>

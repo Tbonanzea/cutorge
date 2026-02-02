@@ -2,8 +2,15 @@ import { createClient } from '@/lib/supabase/server';
 import prisma from '@/lib/prisma';
 import NavBar from './NavBar';
 
+export type UserData = {
+	email: string;
+	firstName?: string | null;
+	lastName?: string | null;
+	isAdmin: boolean;
+};
+
 export default async function Header() {
-	let isAdmin = false;
+	let userData: UserData | null = null;
 
 	try {
 		const supabase = await createClient();
@@ -12,17 +19,30 @@ export default async function Header() {
 		if (user) {
 			const dbUser = await prisma.user.findUnique({
 				where: { id: user.id },
-				select: { role: true },
+				select: {
+					email: true,
+					firstName: true,
+					lastName: true,
+					role: true,
+				},
 			});
-			isAdmin = dbUser?.role === 'ADMIN';
+
+			if (dbUser) {
+				userData = {
+					email: dbUser.email,
+					firstName: dbUser.firstName,
+					lastName: dbUser.lastName,
+					isAdmin: dbUser.role === 'ADMIN',
+				};
+			}
 		}
 	} catch {
-		// User not authenticated or error fetching - default to non-admin
+		// User not authenticated or error fetching - userData remains null
 	}
 
 	return (
 		<header>
-			<NavBar isAdmin={isAdmin} />
+			<NavBar user={userData} />
 		</header>
 	);
 }
