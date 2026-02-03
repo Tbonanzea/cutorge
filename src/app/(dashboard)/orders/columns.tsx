@@ -9,12 +9,20 @@ import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { getStatusVariant, getStatusLabel } from '@/lib/status-utils';
 
-type OrderWithUser = Order & {
+export type OrderWithUser = Order & {
 	user: Pick<User, 'email' | 'firstName' | 'lastName'>;
 	_count: {
 		items: number;
 	};
 };
+
+export const statusOptions = [
+	{ value: 'PENDING', label: 'Pendiente' },
+	{ value: 'PAID', label: 'Pagado' },
+	{ value: 'SHIPPED', label: 'Enviado' },
+	{ value: 'COMPLETED', label: 'Completado' },
+	{ value: 'CANCELLED', label: 'Cancelado' },
+];
 
 export const columns: ColumnDef<OrderWithUser>[] = [
 	{

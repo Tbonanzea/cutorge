@@ -1,12 +1,17 @@
 'use server';
 
 import prisma from '@/lib/prisma';
+import { Prisma } from '@prisma/client';
 import { revalidatePath } from 'next/cache';
+import { requireAdmin } from '@/lib/permissions';
 
 export type MaterialWithTypes = Awaited<ReturnType<typeof getMaterials>>[number];
 
+type SortField = 'name' | 'createdAt';
+type SortOrder = 'asc' | 'desc';
+
 /**
- * Get all materials with their types
+ * Get all materials with their types (no pagination, used for selection)
  */
 export async function getMaterials() {
 	return prisma.material.findMany({
@@ -20,6 +25,49 @@ export async function getMaterials() {
 		},
 		orderBy: { name: 'asc' },
 	});
+}
+
+/**
+ * Get paginated materials with optional sorting
+ */
+export async function getPaginatedMaterials(
+	page = 1,
+	limit = 10,
+	sortBy: SortField = 'name',
+	order: SortOrder = 'asc'
+) {
+	const offset = (page - 1) * limit;
+
+	// Use array for stable sorting with id as tiebreaker
+	const orderBy: Prisma.MaterialOrderByWithRelationInput[] = [
+		{ [sortBy]: order },
+		{ id: 'asc' }, // Stable tiebreaker for duplicate values
+	];
+
+	const [materials, total] = await Promise.all([
+		prisma.material.findMany({
+			skip: offset,
+			take: limit,
+			orderBy,
+			include: {
+				types: {
+					orderBy: { height: 'asc' },
+				},
+				_count: {
+					select: { cartItems: true },
+				},
+			},
+		}),
+		prisma.material.count(),
+	]);
+
+	return {
+		materials,
+		page,
+		limit,
+		total,
+		totalPages: Math.ceil(total / limit),
+	};
 }
 
 /**
@@ -37,13 +85,16 @@ export async function getMaterialById(id: string) {
 }
 
 /**
- * Create a new material
+ * Create a new material (admin only)
  */
 export async function createMaterial(data: {
 	name: string;
 	description?: string;
 }) {
 	try {
+		// Require admin permission
+		await requireAdmin();
+
 		const material = await prisma.material.create({
 			data: {
 				name: data.name,
@@ -62,21 +113,24 @@ export async function createMaterial(data: {
 }
 
 /**
- * Update a material
+ * Update a material (admin only)
  */
 export async function updateMaterial(
 	id: string,
 	data: {
-		name: string;
+		name?: string;
 		description?: string;
 	}
 ) {
 	try {
+		// Require admin permission
+		await requireAdmin();
+
 		const material = await prisma.material.update({
 			where: { id },
 			data: {
 				name: data.name,
-				description: data.description || null,
+				description: data.description ?? undefined,
 			},
 		});
 
@@ -92,10 +146,13 @@ export async function updateMaterial(
 }
 
 /**
- * Delete a material
+ * Delete a material (admin only)
  */
 export async function deleteMaterial(id: string) {
 	try {
+		// Require admin permission
+		await requireAdmin();
+
 		// Check if material has associated types or cart items
 		const material = await prisma.material.findUnique({
 			where: { id },
@@ -136,7 +193,7 @@ export async function deleteMaterial(id: string) {
 }
 
 /**
- * Create a material type
+ * Create a material type (admin only)
  */
 export async function createMaterialType(
 	materialId: string,
@@ -155,6 +212,9 @@ export async function createMaterialType(
 	}
 ) {
 	try {
+		// Require admin permission
+		await requireAdmin();
+
 		const materialType = await prisma.materialType.create({
 			data: {
 				materialId,
@@ -171,7 +231,7 @@ export async function createMaterialType(
 }
 
 /**
- * Update a material type
+ * Update a material type (admin only)
  */
 export async function updateMaterialType(
 	id: string,
@@ -190,6 +250,9 @@ export async function updateMaterialType(
 	}
 ) {
 	try {
+		// Require admin permission
+		await requireAdmin();
+
 		const materialType = await prisma.materialType.update({
 			where: { id },
 			data,
@@ -203,10 +266,13 @@ export async function updateMaterialType(
 }
 
 /**
- * Delete a material type
+ * Delete a material type (admin only)
  */
 export async function deleteMaterialType(id: string) {
 	try {
+		// Require admin permission
+		await requireAdmin();
+
 		// Check if material type is being used in orders
 		const materialType = await prisma.materialType.findUnique({
 			where: { id },

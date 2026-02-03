@@ -3,6 +3,10 @@
 import prisma from '@/lib/prisma';
 import { OrderStatus, Prisma } from '@prisma/client';
 import { revalidatePath } from 'next/cache';
+import { requireAdmin } from '@/lib/permissions';
+
+type SortField = 'id' | 'totalPrice' | 'status' | 'createdAt';
+type SortOrder = 'asc' | 'desc';
 
 // Type for order with all details
 export type OrderWithDetails = Prisma.OrderGetPayload<{
@@ -35,23 +39,33 @@ export type OrderWithDetails = Prisma.OrderGetPayload<{
 }>;
 
 /**
- * Get paginated orders with filters
+ * Get paginated orders with filters and sorting
  * @param page Page number (starts at 1)
  * @param limit Number of records per page
  * @param status Optional status filter
+ * @param sortBy Field to sort by
+ * @param order Sort direction
  */
 export async function getPaginatedOrders(
 	page = 1,
 	limit = 10,
-	status?: OrderStatus | 'ALL'
+	status?: OrderStatus | 'ALL',
+	sortBy: SortField = 'createdAt',
+	order: SortOrder = 'desc'
 ) {
 	const offset = (page - 1) * limit;
 
 	// Build where clause
-	const where: any = {};
+	const where: Prisma.OrderWhereInput = {};
 	if (status && status !== 'ALL') {
 		where.status = status;
 	}
+
+	// Build order by clause with stable tiebreaker
+	const orderBy: Prisma.OrderOrderByWithRelationInput[] = [
+		{ [sortBy]: order },
+		{ id: 'asc' }, // Stable tiebreaker for duplicate values
+	];
 
 	// Fetch orders with pagination
 	const [orders, total] = await Promise.all([
@@ -59,7 +73,7 @@ export async function getPaginatedOrders(
 			where,
 			skip: offset,
 			take: limit,
-			orderBy: { createdAt: 'desc' },
+			orderBy,
 			include: {
 				user: {
 					select: {
@@ -133,7 +147,7 @@ export async function getOrderById(orderId: string) {
 }
 
 /**
- * Update order status
+ * Update order status (admin only)
  * Valid transitions: PENDING → PAID → SHIPPED → COMPLETED
  * Can also mark as CANCELLED at any time
  */
@@ -142,6 +156,9 @@ export async function updateOrderStatus(
 	newStatus: OrderStatus
 ) {
 	try {
+		// Require admin permission
+		await requireAdmin();
+
 		// Validate order exists
 		const existingOrder = await prisma.order.findUnique({
 			where: { id: orderId },

@@ -1,27 +1,60 @@
-import { getMaterials } from './actions';
+import { getPaginatedMaterials } from './actions';
+import { MaterialsTable } from './materials-table';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import {
-	Table,
-	TableBody,
-	TableCell,
-	TableHead,
-	TableHeader,
-	TableRow,
-} from '@/components/ui/table';
 import { Metadata } from 'next';
-import { Plus, Pencil } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import Link from 'next/link';
-import { DeleteMaterialButton } from './delete-button';
+import { createClient } from '@/lib/supabase/server';
+import prisma from '@/lib/prisma';
 
 export const metadata: Metadata = {
 	title: 'Materiales',
 	description: 'Gestión de materiales disponibles para corte',
 };
 
-export default async function MaterialsPage() {
-	const materials = await getMaterials();
+type SortField = 'name' | 'createdAt';
+type SortOrder = 'asc' | 'desc';
+
+const VALID_SORT_FIELDS: SortField[] = ['name', 'createdAt'];
+const VALID_SORT_ORDERS: SortOrder[] = ['asc', 'desc'];
+
+export default async function MaterialsPage({
+	searchParams,
+}: {
+	searchParams?: Promise<{ page?: string; sortBy?: string; order?: string }>;
+}) {
+	const params = await searchParams;
+	const page = parseInt(params?.page || '1', 10);
+	const sortBy = VALID_SORT_FIELDS.includes(params?.sortBy as SortField)
+		? (params?.sortBy as SortField)
+		: 'name';
+	const order = VALID_SORT_ORDERS.includes(params?.order as SortOrder)
+		? (params?.order as SortOrder)
+		: 'asc';
+	const limit = 10;
+
+	// Get current user role
+	const supabase = await createClient();
+	const {
+		data: { user },
+	} = await supabase.auth.getUser();
+
+	const dbUser = user
+		? await prisma.user.findUnique({
+				where: { id: user.id },
+				select: { role: true },
+		  })
+		: null;
+
+	const isAdmin = dbUser?.role === 'ADMIN';
+
+	const { materials, totalPages } = await getPaginatedMaterials(
+		page,
+		limit,
+		sortBy,
+		order
+	);
 
 	return (
 		<div className="container mx-auto py-10">
@@ -33,75 +66,22 @@ export default async function MaterialsPage() {
 							Gestiona los materiales disponibles para corte
 						</p>
 					</div>
-					<Button asChild>
-						<Link href="/materials/new">
-							<Plus className="mr-2 h-4 w-4" />
-							Nuevo Material
-						</Link>
-					</Button>
+					{isAdmin && (
+						<Button asChild>
+							<Link href="/materials/new">
+								<Plus className="mr-2 h-4 w-4" />
+								Nuevo Material
+							</Link>
+						</Button>
+					)}
 				</CardHeader>
 				<CardContent>
-					<Table>
-						<TableHeader>
-							<TableRow>
-								<TableHead>Nombre</TableHead>
-								<TableHead>Descripción</TableHead>
-								<TableHead className="text-center">Tipos</TableHead>
-								<TableHead className="text-center">En Carritos</TableHead>
-								<TableHead className="text-right">Acciones</TableHead>
-							</TableRow>
-						</TableHeader>
-						<TableBody>
-							{materials.length === 0 ? (
-								<TableRow>
-									<TableCell
-										colSpan={5}
-										className="text-center text-muted-foreground py-8"
-									>
-										No hay materiales registrados
-									</TableCell>
-								</TableRow>
-							) : (
-								materials.map((material) => (
-									<TableRow key={material.id}>
-										<TableCell className="font-medium">
-											{material.name}
-										</TableCell>
-										<TableCell className="text-muted-foreground">
-											{material.description || '-'}
-										</TableCell>
-										<TableCell className="text-center">
-											<Badge variant="secondary">
-												{material.types.length} tipo
-												{material.types.length !== 1 ? 's' : ''}
-											</Badge>
-										</TableCell>
-										<TableCell className="text-center">
-											{material._count.cartItems}
-										</TableCell>
-										<TableCell className="text-right">
-											<div className="flex justify-end gap-2">
-												<Button asChild variant="outline" size="sm">
-													<Link href={`/materials/${material.id}`}>
-														<Pencil className="mr-2 h-3 w-3" />
-														Editar
-													</Link>
-												</Button>
-												<DeleteMaterialButton
-													materialId={material.id}
-													materialName={material.name}
-													disabled={
-														material.types.length > 0 ||
-														material._count.cartItems > 0
-													}
-												/>
-											</div>
-										</TableCell>
-									</TableRow>
-								))
-							)}
-						</TableBody>
-					</Table>
+					<MaterialsTable
+						materials={materials}
+						currentPage={page}
+						totalPages={totalPages}
+						isAdmin={isAdmin}
+					/>
 				</CardContent>
 			</Card>
 		</div>

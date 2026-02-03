@@ -1,12 +1,17 @@
 'use server';
 
 import prisma from '@/lib/prisma';
+import { Prisma } from '@prisma/client';
 import { revalidatePath } from 'next/cache';
+import { requireAdmin } from '@/lib/permissions';
 
 export type ExtraServiceWithStats = Awaited<ReturnType<typeof getExtraServices>>[number];
 
+type SortField = 'name' | 'price' | 'isActive' | 'createdAt';
+type SortOrder = 'asc' | 'desc';
+
 /**
- * Get all extra services
+ * Get all extra services (no pagination)
  */
 export async function getExtraServices() {
 	return prisma.extraService.findMany({
@@ -17,6 +22,46 @@ export async function getExtraServices() {
 			},
 		},
 	});
+}
+
+/**
+ * Get paginated extra services with optional sorting
+ */
+export async function getPaginatedExtraServices(
+	page = 1,
+	limit = 10,
+	sortBy: SortField = 'name',
+	order: SortOrder = 'asc'
+) {
+	const offset = (page - 1) * limit;
+
+	// Use array for stable sorting with id as tiebreaker
+	const orderBy: Prisma.ExtraServiceOrderByWithRelationInput[] = [
+		{ [sortBy]: order },
+		{ id: 'asc' }, // Stable tiebreaker for duplicate values
+	];
+
+	const [extras, total] = await Promise.all([
+		prisma.extraService.findMany({
+			skip: offset,
+			take: limit,
+			orderBy,
+			include: {
+				_count: {
+					select: { orderExtras: true },
+				},
+			},
+		}),
+		prisma.extraService.count(),
+	]);
+
+	return {
+		extras,
+		page,
+		limit,
+		total,
+		totalPages: Math.ceil(total / limit),
+	};
 }
 
 /**
@@ -39,7 +84,7 @@ export async function getExtraServiceById(id: string) {
 }
 
 /**
- * Create a new extra service
+ * Create a new extra service (admin only)
  */
 export async function createExtraService(data: {
 	name: string;
@@ -49,6 +94,9 @@ export async function createExtraService(data: {
 	isActive?: boolean;
 }) {
 	try {
+		// Require admin permission
+		await requireAdmin();
+
 		const extra = await prisma.extraService.create({
 			data: {
 				name: data.name,
@@ -70,7 +118,7 @@ export async function createExtraService(data: {
 }
 
 /**
- * Update an extra service
+ * Update an extra service (admin only)
  */
 export async function updateExtraService(
 	id: string,
@@ -83,6 +131,9 @@ export async function updateExtraService(
 	}
 ) {
 	try {
+		// Require admin permission
+		await requireAdmin();
+
 		const extra = await prisma.extraService.update({
 			where: { id },
 			data,
@@ -99,10 +150,13 @@ export async function updateExtraService(
 }
 
 /**
- * Delete an extra service
+ * Delete an extra service (admin only)
  */
 export async function deleteExtraService(id: string) {
 	try {
+		// Require admin permission
+		await requireAdmin();
+
 		// Check if service is being used in orders
 		const extra = await prisma.extraService.findUnique({
 			where: { id },
@@ -136,10 +190,13 @@ export async function deleteExtraService(id: string) {
 }
 
 /**
- * Toggle extra service active status
+ * Toggle extra service active status (admin only)
  */
 export async function toggleExtraServiceActive(id: string) {
 	try {
+		// Require admin permission
+		await requireAdmin();
+
 		const extra = await prisma.extraService.findUnique({
 			where: { id },
 		});
