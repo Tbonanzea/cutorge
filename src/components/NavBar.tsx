@@ -164,50 +164,52 @@ export default function NavBar({ user }: NavBarProps) {
 						<Menu className='size-5' />
 					</Button>
 				</SheetTrigger>
-				<SheetContent side='right' className='w-72'>
-					<SheetHeader className='text-left'>
+				<SheetContent side='right' className='w-72 p-0'>
+					<SheetHeader className='border-b px-4 py-5'>
 						<SheetTitle>
 							<Image
 								src='/images/logo.png'
 								alt='CutForge'
-								width={120}
-								height={30}
-								className='h-7 w-auto'
+								width={240}
+								height={60}
+								className='h-20 w-auto'
 							/>
 						</SheetTitle>
 					</SheetHeader>
-					<div className='mt-8 flex flex-col gap-1'>
-						{navLinks.map((link) => (
-							<Link
-								key={link.href}
-								href={link.href}
-								onClick={() => setOpen(false)}
-								className={`px-4 py-3 text-base font-medium rounded-lg transition-colors ${
-									isActive(link.href)
-										? 'bg-accent text-accent-foreground'
-										: 'text-muted-foreground hover:text-foreground hover:bg-accent/50'
-								}`}
-							>
-								{link.label}
-							</Link>
-						))}
-						{user?.isAdmin && (
-							<Link
-								href='/dashboard'
-								onClick={() => setOpen(false)}
-								className={`px-4 py-3 text-base font-medium rounded-lg transition-colors flex items-center gap-2 ${
-									isActive('/dashboard')
-										? 'bg-accent text-accent-foreground'
-										: 'text-muted-foreground hover:text-foreground hover:bg-accent/50'
-								}`}
-							>
-								<LayoutDashboard className='size-5' />
-								Admin
-							</Link>
-						)}
+					<nav className='flex flex-col px-4 py-6'>
+						<div className='flex flex-col gap-1'>
+							{navLinks.map((link) => (
+								<Link
+									key={link.href}
+									href={link.href}
+									onClick={() => setOpen(false)}
+									className={`px-4 py-3.5 text-base font-medium rounded-lg transition-colors ${
+										isActive(link.href)
+											? 'bg-primary text-primary-foreground'
+											: 'text-foreground hover:bg-accent'
+									}`}
+								>
+									{link.label}
+								</Link>
+							))}
+							{user?.isAdmin && (
+								<Link
+									href='/dashboard'
+									onClick={() => setOpen(false)}
+									className={`px-4 py-3.5 text-base font-medium rounded-lg transition-colors flex items-center gap-2 ${
+										isActive('/dashboard')
+											? 'bg-primary text-primary-foreground'
+											: 'text-foreground hover:bg-accent'
+									}`}
+								>
+									<LayoutDashboard className='size-5' />
+									Admin
+								</Link>
+							)}
+						</div>
 						{user ? (
-							<div className='mt-4 pt-4 border-t'>
-								<div className='px-4 py-2 mb-2'>
+							<div className='mt-6 pt-6 border-t'>
+								<div className='px-4 py-3 mb-3 bg-accent/50 rounded-lg'>
 									<div className='flex items-center gap-3'>
 										<Avatar size='default'>
 											<AvatarImage src='' alt={getUserDisplayName(user)} />
@@ -236,20 +238,20 @@ export default function NavBar({ user }: NavBarProps) {
 								</Button>
 							</div>
 						) : (
-							<div className='mt-4 pt-4 border-t flex flex-col gap-2'>
-								<Button asChild variant='outline' className='w-full'>
+							<div className='mt-6 pt-6 border-t flex flex-col gap-3'>
+								<Button asChild variant='outline' size='lg' className='w-full'>
 									<Link href='/auth/login' onClick={() => setOpen(false)}>
 										Iniciar sesión
 									</Link>
 								</Button>
-								<Button asChild variant='default' className='w-full'>
+								<Button asChild variant='default' size='lg' className='w-full'>
 									<Link href='/auth/signup' onClick={() => setOpen(false)}>
 										Registrarse
 									</Link>
 								</Button>
 							</div>
 						)}
-					</div>
+					</nav>
 				</SheetContent>
 			</Sheet>
 		</nav>
