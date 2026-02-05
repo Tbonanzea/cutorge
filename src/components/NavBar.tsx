@@ -36,6 +36,7 @@ interface NavBarProps {
 const navLinks = [
 	{ href: '/', label: 'Inicio' },
 	{ href: '/quoting', label: 'Cotizador' },
+	{ href: '/guidelines', label: 'Guía' },
 	{ href: '/about', label: 'Acerca de' },
 ];
 

@@ -36,7 +36,7 @@ export function ExtrasTable({
 			description: data.description ?? undefined,
 			price: data.price,
 			unit: data.unit,
-			isActive: data.isActive === 'true' || data.isActive === true,
+			isActive: typeof data.isActive === 'string' ? data.isActive === 'true' : data.isActive === true,
 		});
 	};
 

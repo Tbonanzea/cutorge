@@ -10,6 +10,7 @@ const publicRoutes = [
 	'/auth/confirm',
 	'/auth/callback',
 	'/about',
+	'/guidelines',
 ];
 
 // Routes that start with these prefixes are public (webhooks, etc.)
