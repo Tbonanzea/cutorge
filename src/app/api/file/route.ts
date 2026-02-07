@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { createClient } from '@/lib/supabase/server';
 
 const BUCKET_NAME = 'dxf-files';
 
@@ -72,6 +73,19 @@ export async function GET(request: Request) {
  */
 export async function POST(request: Request) {
 	try {
+		// Get authenticated user from session cookies
+		const supabaseAuth = await createClient();
+		const {
+			data: { user },
+		} = await supabaseAuth.auth.getUser();
+
+		if (!user) {
+			return NextResponse.json(
+				{ error: 'Authentication required' },
+				{ status: 401 }
+			);
+		}
+
 		const body = await request.json();
 		const { fileName, fileContent, contentType } = body;
 
@@ -82,17 +96,20 @@ export async function POST(request: Request) {
 			);
 		}
 
+		// Build storage path: {userId}/{fileName}
+		const storagePath = `${user.id}/${fileName}`;
+
 		// Convert base64 content to Buffer
 		const fileBuffer = Buffer.from(fileContent, 'base64');
 
-		const supabase = createAdminClient();
+		const supabaseAdmin = createAdminClient();
 
 		// Upload to Supabase Storage
-		const { data, error } = await supabase.storage
+		const { data, error } = await supabaseAdmin.storage
 			.from(BUCKET_NAME)
-			.upload(fileName, fileBuffer, {
+			.upload(storagePath, fileBuffer, {
 				contentType: contentType || 'application/octet-stream',
-				upsert: false, // Fail if file already exists
+				upsert: false,
 			});
 
 		if (error) {
