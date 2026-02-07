@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { getOrderById, updateOrderStatus, OrderWithDetails } from '../actions';
-import { OrderStatus } from '@prisma/client';
+import { OrderStatus } from '@/generated/prisma/browser';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';

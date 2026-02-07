@@ -2,7 +2,7 @@
 
 import { getUserByEmail } from '@/app/(dashboard)/users/actions';
 import { login } from '@/app/auth/actions';
-import { User } from '@prisma/client';
+import { User } from '@/generated/prisma/browser';
 import { useMutation } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 

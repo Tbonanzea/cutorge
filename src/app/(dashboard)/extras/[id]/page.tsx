@@ -10,7 +10,7 @@ import { Switch } from '@/components/ui/switch';
 import { ArrowLeft, Loader2, Save } from 'lucide-react';
 import Link from 'next/link';
 import { getExtraServiceById, updateExtraService } from '../actions';
-import { ExtraService } from '@prisma/client';
+import { ExtraService } from '@/generated/prisma/browser';
 
 export default function EditExtraPage() {
 	const params = useParams();

@@ -1,6 +1,6 @@
 'use client';
 
-import { OrderStatus } from '@prisma/client';
+import { OrderStatus } from '@/generated/prisma/browser';
 import { AdminDataTable, EditableColumnConfig } from '@/components/admin/AdminDataTable';
 import { columns, statusOptions, OrderWithUser } from './columns';
 import { updateOrderStatus } from './actions';

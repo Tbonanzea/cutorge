@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 // The client you created from the Server-Side Auth instructions
 import { createClient } from '@/lib/supabase/server';
 import { createUser, updateUser } from '@/app/(dashboard)/users/actions';
-import { AuthProvider } from '@prisma/client';
+import { AuthProvider } from '@/generated/prisma/client';
 import prisma from '@/lib/prisma';
 
 export async function GET(request: Request) {

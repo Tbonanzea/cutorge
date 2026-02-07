@@ -1,7 +1,7 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import { OrderStatus } from '@prisma/client';
+import { OrderStatus } from '@/generated/prisma/browser';
 import { useRouter, useSearchParams } from 'next/navigation';
 
 interface OrdersFilterProps {

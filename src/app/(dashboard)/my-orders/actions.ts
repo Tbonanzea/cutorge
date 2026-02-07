@@ -1,7 +1,7 @@
 'use server';
 
 import prisma from '@/lib/prisma';
-import { OrderStatus, Prisma } from '@prisma/client';
+import { OrderStatus, Prisma } from '@/generated/prisma/client';
 import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 

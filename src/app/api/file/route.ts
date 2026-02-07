@@ -1,81 +1,75 @@
-import {
-	GetObjectCommand,
-	GetObjectCommandOutput,
-	ListObjectsV2Command,
-	ListObjectsV2CommandOutput,
-	PutObjectCommand,
-	S3Client,
-} from '@aws-sdk/client-s3';
 import { NextResponse } from 'next/server';
-import { Readable } from 'stream';
+import { createAdminClient } from '@/lib/supabase/admin';
 
-const s3Client = new S3Client({
-	region: process.env.AWS_REGION,
-	credentials: {
-		accessKeyId: process.env.AWS_ACCESS_KEY_ID || '',
-		secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || '',
-	},
-});
+const BUCKET_NAME = 'dxf-files';
 
-async function streamToBuffer(stream: Readable): Promise<Buffer> {
-	const chunks: Uint8Array[] = [];
-	for await (const chunk of stream) {
-		chunks.push(typeof chunk === 'string' ? Buffer.from(chunk) : chunk);
-	}
-	return Buffer.concat(chunks);
-}
-
+/**
+ * GET /api/file?key=path/to/file
+ * Downloads a file from Supabase Storage
+ */
 export async function GET(request: Request) {
 	const { searchParams } = new URL(request.url);
 	const key = searchParams.get('key');
 
-	if (key) {
-		// GET un único objeto
-		try {
-			const command = new GetObjectCommand({
-				Bucket: process.env.AWS_S3_BUCKET_NAME,
-				Key: key,
-			});
-			const data: GetObjectCommandOutput = await s3Client.send(command);
-			/**
-			 * data.Body será un ReadableStream (Node.js Readable) o undefined
-			 * en el entorno de ejecución Node. Convertimos a Buffer para devolverlo.
-			 */
-			if (!data.Body) {
-				return NextResponse.json(
-					{ error: 'Object Body is empty' },
-					{ status: 404 }
-				);
-			}
+	if (!key) {
+		return NextResponse.json(
+			{ error: 'Missing required parameter: key' },
+			{ status: 400 }
+		);
+	}
 
-			const bodyBuffer = await streamToBuffer(data.Body as Readable);
+	try {
+		const supabase = createAdminClient();
 
-			return new NextResponse(bodyBuffer, {
-				status: 200,
-				headers: {
-					'Content-Type':
-						data.ContentType || 'application/octet-stream',
-				},
-			});
-		} catch (error: any) {
-			return NextResponse.json({ error: error.message }, { status: 500 });
-		}
-	} else {
-		// Listar objetos del bucket
-		try {
-			const command = new ListObjectsV2Command({
-				Bucket: process.env.AWS_S3_BUCKET_NAME,
-			});
-			const data: ListObjectsV2CommandOutput = await s3Client.send(
-				command
+		// Download file from Supabase Storage
+		const { data, error } = await supabase.storage
+			.from(BUCKET_NAME)
+			.download(key);
+
+		if (error) {
+			console.error('Supabase Storage download error:', error);
+			return NextResponse.json(
+				{ error: error.message || 'Failed to download file' },
+				{ status: 404 }
 			);
-			return NextResponse.json(data, { status: 200 });
-		} catch (error: any) {
-			return NextResponse.json({ error: error.message }, { status: 500 });
 		}
+
+		if (!data) {
+			return NextResponse.json(
+				{ error: 'File not found' },
+				{ status: 404 }
+			);
+		}
+
+		// Convert Blob to Uint8Array for response
+		const arrayBuffer = await data.arrayBuffer();
+
+		// Determine content type from file extension or default to DXF
+		const contentType = key.endsWith('.dxf')
+			? 'application/dxf'
+			: 'application/octet-stream';
+
+		return new NextResponse(new Uint8Array(arrayBuffer), {
+			status: 200,
+			headers: {
+				'Content-Type': contentType,
+			},
+		});
+	} catch (error: any) {
+		console.error('Error downloading file:', error);
+		return NextResponse.json(
+			{ error: error.message || 'Internal server error' },
+			{ status: 500 }
+		);
 	}
 }
 
+/**
+ * POST /api/file
+ * Uploads a file to Supabase Storage
+ *
+ * Body: { fileName: string, fileContent: string (base64), contentType?: string }
+ */
 export async function POST(request: Request) {
 	try {
 		const body = await request.json();
@@ -88,24 +82,39 @@ export async function POST(request: Request) {
 			);
 		}
 
-		// Convertir el contenido en base64 a Buffer
+		// Convert base64 content to Buffer
 		const fileBuffer = Buffer.from(fileContent, 'base64');
 
-		// En v3, usamos PutObjectCommand para subir
-		const command = new PutObjectCommand({
-			Bucket: process.env.AWS_S3_BUCKET_NAME,
-			Key: fileName,
-			Body: fileBuffer,
-			ContentType: contentType || 'application/octet-stream',
-		});
+		const supabase = createAdminClient();
 
-		await s3Client.send(command);
+		// Upload to Supabase Storage
+		const { data, error } = await supabase.storage
+			.from(BUCKET_NAME)
+			.upload(fileName, fileBuffer, {
+				contentType: contentType || 'application/octet-stream',
+				upsert: false, // Fail if file already exists
+			});
+
+		if (error) {
+			console.error('Supabase Storage upload error:', error);
+			return NextResponse.json(
+				{ error: error.message || 'Failed to upload file' },
+				{ status: 500 }
+			);
+		}
 
 		return NextResponse.json(
-			{ message: 'File uploaded successfully' },
+			{
+				message: 'File uploaded successfully',
+				path: data.path,
+			},
 			{ status: 200 }
 		);
 	} catch (error: any) {
-		return NextResponse.json({ error: error.message }, { status: 500 });
+		console.error('Error uploading file:', error);
+		return NextResponse.json(
+			{ error: error.message || 'Internal server error' },
+			{ status: 500 }
+		);
 	}
 }

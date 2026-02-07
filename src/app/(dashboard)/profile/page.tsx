@@ -29,7 +29,7 @@ import {
 	FileText,
 	ExternalLink,
 } from 'lucide-react';
-import { Address } from '@prisma/client';
+import { Address } from '@/generated/prisma/browser';
 import Link from 'next/link';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';

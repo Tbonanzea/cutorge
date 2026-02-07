@@ -2,7 +2,7 @@ import { getPaginatedOrders } from '@/app/(dashboard)/orders/actions';
 import { OrdersTable } from './orders-table';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Metadata } from 'next';
-import { OrderStatus } from '@prisma/client';
+import { OrderStatus } from '@/generated/prisma/client';
 import { Suspense } from 'react';
 import OrdersFilter from './orders-filter';
 import { createClient } from '@/lib/supabase/server';

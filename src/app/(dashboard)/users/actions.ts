@@ -1,7 +1,7 @@
 'use server';
 
 import prisma from '@/lib/prisma';
-import { User, UserRole, Prisma } from '@prisma/client';
+import { User, UserRole, Prisma } from '@/generated/prisma/client';
 import { requireAdmin } from '@/lib/permissions';
 import { revalidatePath } from 'next/cache';
 

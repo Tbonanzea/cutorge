@@ -22,7 +22,7 @@ import {
 	createMaterialType,
 	deleteMaterialType,
 } from '../actions';
-import { MaterialType } from '@prisma/client';
+import { MaterialType } from '@/generated/prisma/browser';
 
 type MaterialWithTypes = Awaited<ReturnType<typeof getMaterialById>>;
 

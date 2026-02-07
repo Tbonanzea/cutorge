@@ -6,7 +6,7 @@ import { NewPasswordData } from '@/hooks/auth/useNewPasswordMutation';
 import { LogInData } from '@/hooks/auth/useLoginMutation';
 import prisma from '@/lib/prisma';
 import { createClient } from '@/lib/supabase/server';
-import { AuthProvider } from '@prisma/client';
+import { AuthProvider } from '@/generated/prisma/client';
 import { Provider } from '@supabase/supabase-js';
 import { redirect } from 'next/navigation';
 

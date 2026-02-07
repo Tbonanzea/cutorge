@@ -1,7 +1,7 @@
 'use client';
 
 import { signup } from '@/app/auth/actions';
-import { User } from '@prisma/client';
+import { User } from '@/generated/prisma/browser';
 import { useMutation } from '@tanstack/react-query';
 
 export type SignUpData = {

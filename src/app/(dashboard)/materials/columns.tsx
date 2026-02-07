@@ -1,6 +1,6 @@
 'use client';
 
-import { Material, MaterialType } from '@prisma/client';
+import { Material, MaterialType } from '@/generated/prisma/browser';
 import { ColumnDef } from '@tanstack/react-table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';

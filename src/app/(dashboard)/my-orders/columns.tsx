@@ -1,6 +1,6 @@
 'use client';
 
-import { Order, OrderStatus } from '@prisma/client';
+import { Order, OrderStatus } from '@/generated/prisma/browser';
 import { ColumnDef } from '@tanstack/react-table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';

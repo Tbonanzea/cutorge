@@ -1,6 +1,6 @@
 'use client';
 
-import { User, UserRole } from '@prisma/client';
+import { User, UserRole } from '@/generated/prisma/browser';
 import { ColumnDef } from '@tanstack/react-table';
 import { Badge } from '@/components/ui/badge';
 import { formatDistanceToNow } from 'date-fns';

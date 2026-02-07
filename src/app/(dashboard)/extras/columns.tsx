@@ -1,6 +1,6 @@
 'use client';
 
-import { ExtraService } from '@prisma/client';
+import { ExtraService } from '@/generated/prisma/browser';
 import { ColumnDef } from '@tanstack/react-table';
 import { Badge } from '@/components/ui/badge';
 

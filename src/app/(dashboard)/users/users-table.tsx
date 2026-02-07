@@ -1,6 +1,6 @@
 'use client';
 
-import { User } from '@prisma/client';
+import { User } from '@/generated/prisma/browser';
 import { AdminDataTable, EditableColumnConfig } from '@/components/admin/AdminDataTable';
 import { columns, roleOptions } from './columns';
 import { updateUserById, deleteUser } from './actions';

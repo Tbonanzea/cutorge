@@ -43,9 +43,13 @@ npx prisma db push            # Pushes schema changes without migrations (dev on
 
 ### Database Architecture
 
-- **Dual database setup**: Supabase handles auth users; PostgreSQL (via Prisma) stores application data
+- **Supabase PostgreSQL**: Unified database for both authentication and application data
+- **Prisma 7 ORM**: Used for type-safe database access and migrations
 - **User sync**: Prisma User model uses Supabase UID as the primary key (`id` field)
-- **Prisma client**: Singleton instance exported from `src/lib/prisma.ts`
+- **Prisma client**: Singleton instance with `PrismaPg` driver adapter, exported from `src/lib/prisma.ts`
+- **Generated client**: Output at `src/generated/prisma/` (gitignored, regenerated via `prisma generate`)
+- **Imports**: Server files use `@/generated/prisma/client`, client components use `@/generated/prisma/browser`
+- **Config**: `prisma.config.ts` (root) defines datasource URL, migrations path, and seed command
 - **Schema location**: `prisma/schema.prisma`
 
 ### Multi-Step Quoting Flow
@@ -66,12 +70,14 @@ The quoting system uses a **global context provider** for state management acros
     - `(dashboard)` - Protected admin routes with custom layout
     - `/quoting` - Multi-step quoting flow with QuotingProvider context
     - `/auth` - Authentication pages (login, signup, password reset)
-- **API routes**: Located in `src/app/api/` (e.g., `/api/file` for S3 operations)
+- **API routes**: Located in `src/app/api/` (e.g., `/api/file` for Supabase Storage operations)
 
 ### File Upload & Storage
 
-- **AWS S3**: File storage via AWS SDK v3 (`@aws-sdk/client-s3`)
+- **Supabase Storage**: DXF files stored in Supabase Storage bucket (`dxf-files`)
+- **Admin client**: `src/lib/supabase/admin.ts` provides service role client for storage operations
 - **Route handler**: `src/app/api/file/route.ts` handles uploads (POST) and retrieval (GET)
+- **Storage paths**: Files organized by user ID: `{userId}/{timestamp}-{idx}-{filename}`
 - **DXF parsing**: Uses `dxf-parser` for file validation
 - **DXF viewing**: Three.js-based viewers in components (`DXFViewerSimple`, `DXFViewerTest`)
 - **Webpack config**: `next.config.ts` ensures single Three.js instance via alias resolution
@@ -96,16 +102,15 @@ Required variables (see `.env.example`):
 
 **Server-side**:
 
-- `DATABASE_URL` - PostgreSQL connection string
-- `SUPABASE_SERVICE_ROLE_KEY` - For server-side Supabase operations
-- `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`, `AWS_S3_BUCKET_NAME` - S3 file storage
+- `DATABASE_URL` - Supabase PostgreSQL connection string
+- `SUPABASE_SERVICE_ROLE_KEY` - For server-side Supabase operations (admin client, storage)
 
 ## Key Technical Decisions
 
 1. **Next.js 15 with App Router**: Uses latest routing patterns, Server Components by default
-2. **Separate auth/data databases**: Supabase for auth, Prisma/PostgreSQL for business data
+2. **Supabase for full backend**: Authentication, PostgreSQL database (via Prisma ORM), and file storage unified in Supabase
 3. **Context for multi-page flows**: QuotingContext manages state across quoting steps instead of URL params
-4. **AWS S3 for files**: DXF files stored in S3, metadata in PostgreSQL via Prisma
+4. **Supabase Storage for files**: DXF files stored in Supabase Storage with user-based organization, metadata in PostgreSQL via Prisma
 5. **Three.js for DXF viewing**: Client-side 3D rendering of uploaded design files
 
 ## Component Library

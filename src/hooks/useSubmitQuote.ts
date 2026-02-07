@@ -3,6 +3,7 @@
 import { useMutation } from '@tanstack/react-query';
 import { useQuoting } from '@/context/quotingContext';
 import { useRouter } from 'next/navigation';
+import { supabase } from '@/lib/supabase/client';
 
 interface SubmitQuoteResponse {
 	orderId: string;
@@ -78,25 +79,34 @@ export function useSubmitQuote() {
 				throw new Error('Some cart items are incomplete');
 			}
 
-			// Step 1: Upload all files to S3 (only if they have _rawFile)
+			// Get authenticated user ID for storage path
+			const {
+				data: { user },
+			} = await supabase.auth.getUser();
+
+			if (!user) {
+				throw new Error('User must be authenticated to submit quote');
+			}
+
+			// Step 1: Upload all files to Supabase Storage (only if they have _rawFile)
 			const uploadPromises = cart.items.map(async (item, idx) => {
 				if (item.file._rawFile) {
-					// Generate unique S3 key
+					// Generate unique storage key with user-based path
 					const timestamp = Date.now();
 					const sanitizedFilename = item.file.filename.replace(
 						/[^a-zA-Z0-9.-]/g,
 						'_'
 					);
-					const s3Key = `uploads/${timestamp}-${idx}-${sanitizedFilename}`;
+					const storageKey = `${user.id}/${timestamp}-${idx}-${sanitizedFilename}`;
 
-					// Upload to S3
-					await uploadFileToS3(item.file._rawFile, s3Key);
+					// Upload to Supabase Storage
+					await uploadFileToS3(item.file._rawFile, storageKey);
 
 					return {
 						...item,
 						file: {
 							...item.file,
-							filepath: s3Key, // Update filepath with S3 key
+							filepath: storageKey, // Update filepath with storage key
 						},
 					};
 				}
