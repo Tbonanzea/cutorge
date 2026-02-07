@@ -45,6 +45,7 @@ next-env.d.ts
 
 # local debug files
 /localDebug
+/.playwright*
 # Claude Code local settings
 *.local.md
 

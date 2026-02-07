@@ -9,6 +9,7 @@ interface DXFViewer3DProps {
 	dxfUrl?: string;
 	className?: string;
 	showControls?: boolean; // Whether to show file upload and control buttons
+	thickness?: number; // Material thickness in mm for 3D extrusion visualization
 }
 
 const LINE_WIDTH = 2; // Line width in pixels
@@ -17,6 +18,7 @@ export default function DXFViewer3D({
 	dxfUrl,
 	className = '',
 	showControls = true,
+	thickness,
 }: DXFViewer3DProps) {
 	const containerRef = useRef<HTMLDivElement>(null);
 	const sceneRef = useRef<THREE.Scene | null>(null);
@@ -157,7 +159,7 @@ export default function DXFViewer3D({
 			loadDXFFromPath(dxfUrl);
 		}
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [dxfUrl]);
+	}, [dxfUrl, thickness]);
 
 	const fitCameraToObject = useCallback((object: THREE.Group) => {
 		if (!cameraRef.current || !controlsRef.current || !containerRef.current)
@@ -255,17 +257,111 @@ export default function DXFViewer3D({
 
 			// Parse entities
 			if (dxf.entities && Array.isArray(dxf.entities)) {
-				dxf.entities.forEach((entity: any) => {
-					try {
-						const mesh = createEntityMesh(entity);
-						if (mesh) {
-							group.add(mesh);
-							renderedCount++;
+				if (hasThickness) {
+					// Collect single-entity closed shapes and chainable segments
+					const singleClosedShapes: { shape: THREE.Shape; area: number }[] = [];
+					const chainableSegments: {
+						start: { x: number; y: number };
+						end: { x: number; y: number };
+						entity: any;
+					}[] = [];
+					const remainingEntities: any[] = [];
+
+					dxf.entities.forEach((entity: any) => {
+						const closed = getClosedShapeFromEntity(entity);
+						if (closed) {
+							singleClosedShapes.push(closed);
+						} else {
+							const seg = getSegmentEndpoints(entity);
+							if (seg) {
+								chainableSegments.push({ ...seg, entity });
+							} else {
+								remainingEntities.push(entity);
+							}
 						}
-					} catch (err) {
-						console.warn('Error processing entity:', entity.type, err);
+					});
+
+					// Assemble chainable segments into closed loops
+					const assembledShapes = assembleClosedPaths(chainableSegments);
+
+					// Combine all closed shapes
+					const allClosedShapes = [
+						...assembledShapes.map(s => ({ shape: s.shape, area: s.area })),
+						...singleClosedShapes,
+					];
+
+					console.log('[DXF3D] Single closed entities:', singleClosedShapes.length,
+						'| Assembled paths:', assembledShapes.length,
+						'(from', chainableSegments.length, 'segments)',
+						'| Remaining:', remainingEntities.length);
+
+					if (allClosedShapes.length > 0) {
+						// Sort by area descending - largest is the outer boundary
+						allClosedShapes.sort((a, b) => b.area - a.area);
+
+						const outerShape = allClosedShapes[0].shape;
+
+						// Add all smaller closed shapes as holes
+						for (let i = 1; i < allClosedShapes.length; i++) {
+							const holePoints = allClosedShapes[i].shape.getPoints(64);
+							// Ensure hole is clockwise (opposite of outer)
+							const isCW = THREE.ShapeUtils.isClockWise(holePoints);
+							const orderedPoints = isCW ? holePoints : [...holePoints].reverse();
+							const holePath = new THREE.Path();
+							holePath.moveTo(orderedPoints[0].x, orderedPoints[0].y);
+							for (let j = 1; j < orderedPoints.length; j++) {
+								holePath.lineTo(orderedPoints[j].x, orderedPoints[j].y);
+							}
+							holePath.closePath();
+							outerShape.holes.push(holePath);
+						}
+
+						const extruded = createExtrudedShape(outerShape, 0x333333, 0);
+						group.add(extruded);
+						renderedCount += allClosedShapes.length;
 					}
-				});
+
+					// Render any remaining entities that couldn't be assembled
+					remainingEntities.forEach((entity: any) => {
+						try {
+							const mesh = createEntityMesh(entity);
+							if (mesh) {
+								group.add(mesh);
+								renderedCount++;
+							}
+						} catch (err) {
+							console.warn('Error processing entity:', entity.type, err);
+						}
+					});
+
+					// Also render unused segments (not part of any closed loop)
+					assembledShapes.forEach(s => {
+						s.unusedSegments.forEach((entity: any) => {
+							try {
+								const mesh = createEntityMesh(entity);
+								if (mesh) {
+									group.add(mesh);
+									renderedCount++;
+								}
+							} catch (err) {
+								console.warn('Error processing entity:', entity.type, err);
+							}
+						});
+					});
+				} else {
+					// Standard approach: process each entity individually
+					dxf.entities.forEach((entity: any) => {
+						try {
+							const mesh = createEntityMesh(entity);
+							if (mesh) {
+								group.add(mesh);
+								renderedCount++;
+							}
+						} catch (err) {
+							console.warn('Error processing entity:', entity.type, err);
+						}
+					});
+				}
 			}
 
 			if (group.children.length === 0) {
@@ -330,6 +426,317 @@ export default function DXFViewer3D({
 		return new Line2(geometry, material);
 	};
 
+	// Create an extruded 3D mesh from a THREE.Shape
+	const createExtrudedShape = (shape: THREE.Shape, color: number, baseZ: number): THREE.Group => {
+		const group = new THREE.Group();
+
+		const extrudeSettings: THREE.ExtrudeGeometryOptions = {
+			depth: thickness!,
+			bevelEnabled: false,
+		};
+
+		const geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+
+		// Solid material with metallic look
+		const material = new THREE.MeshPhongMaterial({
+			color: 0xb8b8b8,
+			specular: 0x444444,
+			shininess: 30,
+			side: THREE.DoubleSide,
+		});
+		const mesh = new THREE.Mesh(geometry, material);
+		mesh.position.z = baseZ;
+		group.add(mesh);
+
+		// Edge wireframe for clarity
+		const edges = new THREE.EdgesGeometry(geometry, 15);
+		const edgeMaterial = new THREE.LineBasicMaterial({ color: color || 0x333333 });
+		const edgeLines = new THREE.LineSegments(edges, edgeMaterial);
+		edgeLines.position.z = baseZ;
+		group.add(edgeLines);
+
+		return group;
+	};
+
+	// Create lines at both z=0 and z=thickness with vertical connections
+	const createThickLines = (points: THREE.Vector3[], color: number): THREE.Group => {
+		const group = new THREE.Group();
+		// Bottom edge
+		group.add(createLine2FromPoints(points, color));
+		// Top edge
+		const topPoints = points.map(
+			(p) => new THREE.Vector3(p.x, p.y, p.z + thickness!)
+		);
+		group.add(createLine2FromPoints(topPoints, color));
+		// Vertical edges at start and end
+		group.add(createLine2FromPoints([points[0], topPoints[0]], color));
+		group.add(createLine2FromPoints([points[points.length - 1], topPoints[topPoints.length - 1]], color));
+		return group;
+	};
+
+	const hasThickness = thickness !== undefined && thickness > 0;
+
+	// Compute 2D polygon area using the shoelace formula
+	const computeArea = (points: { x: number; y: number }[]): number => {
+		let area = 0;
+		for (let i = 0; i < points.length; i++) {
+			const j = (i + 1) % points.length;
+			area += points[i].x * points[j].y;
+			area -= points[j].x * points[i].y;
+		}
+		return Math.abs(area) / 2;
+	};
+
+	// Try to extract a closed THREE.Shape and its area from a DXF entity
+	const getClosedShapeFromEntity = (entity: any): { shape: THREE.Shape; area: number } | null => {
+		switch (entity.type) {
+			case 'CIRCLE': {
+				const shape = new THREE.Shape();
+				shape.absarc(entity.center.x, entity.center.y, entity.radius, 0, Math.PI * 2, false);
+				return { shape, area: Math.PI * entity.radius * entity.radius };
+			}
+			case 'ARC': {
+				// Detect full 360° arcs (they represent circles in some CAD exports)
+				if (!entity.center || !entity.radius) return null;
+				let sweep = (entity.endAngle || 0) - (entity.startAngle || 0);
+				if (sweep <= 0) sweep += 2 * Math.PI;
+				if (Math.abs(sweep - 2 * Math.PI) > 0.01) return null; // Not a full circle
+				const shape = new THREE.Shape();
+				shape.absarc(entity.center.x, entity.center.y, entity.radius, 0, Math.PI * 2, false);
+				return { shape, area: Math.PI * entity.radius * entity.radius };
+			}
+			case 'LWPOLYLINE':
+			case 'POLYLINE': {
+				if (!entity.shape || !entity.vertices || entity.vertices.length < 3) return null;
+				const shape = new THREE.Shape();
+				shape.moveTo(entity.vertices[0].x, entity.vertices[0].y);
+				for (let i = 1; i < entity.vertices.length; i++) {
+					shape.lineTo(entity.vertices[i].x, entity.vertices[i].y);
+				}
+				shape.closePath();
+				return { shape, area: computeArea(entity.vertices) };
+			}
+			case 'ELLIPSE': {
+				if (!entity.center || !entity.majorAxisEndPoint) return null;
+				const startAngle = entity.startAngle || 0;
+				const endAngle = entity.endAngle || Math.PI * 2;
+				const isFullEllipse = Math.abs(endAngle - startAngle - Math.PI * 2) < 0.01 ||
+					(startAngle === 0 && endAngle === 0);
+				if (!isFullEllipse) return null;
+
+				const majorRadius = Math.sqrt(entity.majorAxisEndPoint.x ** 2 + entity.majorAxisEndPoint.y ** 2);
+				const minorRadius = majorRadius * entity.axisRatio;
+				const rotation = Math.atan2(entity.majorAxisEndPoint.y, entity.majorAxisEndPoint.x);
+
+				const ellipseCurve = new THREE.EllipseCurve(
+					entity.center.x, entity.center.y,
+					majorRadius, minorRadius,
+					0, Math.PI * 2, false, rotation
+				);
+				const curvePoints = ellipseCurve.getPoints(64);
+				const shape = new THREE.Shape();
+				shape.moveTo(curvePoints[0].x, curvePoints[0].y);
+				for (let i = 1; i < curvePoints.length; i++) {
+					shape.lineTo(curvePoints[i].x, curvePoints[i].y);
+				}
+				shape.closePath();
+				return { shape, area: Math.PI * majorRadius * minorRadius };
+			}
+			default:
+				return null;
+		}
+	};
+
+	// Extract start/end endpoints from a LINE or ARC entity for path assembly
+	const getSegmentEndpoints = (entity: any): { start: { x: number; y: number }; end: { x: number; y: number } } | null => {
+		switch (entity.type) {
+			case 'LINE': {
+				if (!entity.vertices || entity.vertices.length < 2) return null;
+				return {
+					start: { x: entity.vertices[0].x, y: entity.vertices[0].y },
+					end: { x: entity.vertices[1].x, y: entity.vertices[1].y },
+				};
+			}
+			case 'ARC': {
+				if (!entity.center || !entity.radius) return null;
+				const cx = entity.center.x;
+				const cy = entity.center.y;
+				const r = entity.radius;
+				const sa = entity.startAngle;
+				const ea = entity.endAngle;
+				return {
+					start: { x: cx + r * Math.cos(sa), y: cy + r * Math.sin(sa) },
+					end: { x: cx + r * Math.cos(ea), y: cy + r * Math.sin(ea) },
+				};
+			}
+			default:
+				return null;
+		}
+	};
+
+	// Generate intermediate points along an ARC for use in Shape/Path
+	const getArcPoints = (entity: any, reverse: boolean): { x: number; y: number }[] => {
+		const cx = entity.center.x;
+		const cy = entity.center.y;
+		const r = entity.radius;
+		const sa = entity.startAngle;
+		const ea = entity.endAngle;
+		let sweep = ea - sa;
+		if (sweep <= 0) sweep += 2 * Math.PI;
+
+		const segments = Math.max(16, Math.ceil((sweep / Math.PI) * 16));
+		const points: { x: number; y: number }[] = [];
+
+		if (reverse) {
+			// Go from endAngle back to startAngle
+			for (let i = segments - 1; i >= 0; i--) {
+				const t = i / segments;
+				const angle = sa + t * sweep;
+				points.push({ x: cx + r * Math.cos(angle), y: cy + r * Math.sin(angle) });
+			}
+		} else {
+			// Go from startAngle to endAngle (skip first point, it's the segment start)
+			for (let i = 1; i <= segments; i++) {
+				const t = i / segments;
+				const angle = sa + t * sweep;
+				points.push({ x: cx + r * Math.cos(angle), y: cy + r * Math.sin(angle) });
+			}
+		}
+		return points;
+	};
+
+	// Assemble open LINE/ARC segments into closed paths by chaining endpoints
+	const assembleClosedPaths = (segments: { start: { x: number; y: number }; end: { x: number; y: number }; entity: any }[]) => {
+		const TOLERANCE = 0.5; // mm tolerance for endpoint matching
+		const used = new Set<number>();
+		const results: { shape: THREE.Shape; area: number; unusedSegments: any[] }[] = [];
+
+		const dist = (a: { x: number; y: number }, b: { x: number; y: number }) =>
+			Math.sqrt((a.x - b.x) ** 2 + (a.y - b.y) ** 2);
+
+		// Try to build closed chains
+		for (let startIdx = 0; startIdx < segments.length; startIdx++) {
+			if (used.has(startIdx)) continue;
+
+			const chain: { entity: any; reversed: boolean }[] = [];
+			chain.push({ entity: segments[startIdx].entity, reversed: false });
+			used.add(startIdx);
+
+			const chainStart = segments[startIdx].start;
+			let currentEnd = segments[startIdx].end;
+			let closed = false;
+
+			for (let iter = 0; iter < segments.length; iter++) {
+				// Check if loop is closed
+				if (chain.length > 1 && dist(currentEnd, chainStart) < TOLERANCE) {
+					closed = true;
+					break;
+				}
+
+				// Find next matching segment
+				let found = false;
+				for (let i = 0; i < segments.length; i++) {
+					if (used.has(i)) continue;
+
+					// Try normal direction: segment.start matches currentEnd
+					if (dist(segments[i].start, currentEnd) < TOLERANCE) {
+						chain.push({ entity: segments[i].entity, reversed: false });
+						used.add(i);
+						currentEnd = segments[i].end;
+						found = true;
+						break;
+					}
+
+					// Try reversed: segment.end matches currentEnd
+					if (dist(segments[i].end, currentEnd) < TOLERANCE) {
+						chain.push({ entity: segments[i].entity, reversed: true });
+						used.add(i);
+						currentEnd = segments[i].start;
+						found = true;
+						break;
+					}
+				}
+
+				if (!found) break;
+			}
+
+			if (closed && chain.length >= 2) {
+				// Build Shape from the chain
+				const shape = new THREE.Shape();
+				shape.moveTo(chainStart.x, chainStart.y);
+
+				for (const seg of chain) {
+					const e = seg.entity;
+					if (e.type === 'LINE') {
+						const target = seg.reversed
+							? { x: e.vertices[0].x, y: e.vertices[0].y }
+							: { x: e.vertices[1].x, y: e.vertices[1].y };
+						shape.lineTo(target.x, target.y);
+					} else if (e.type === 'ARC') {
+						const arcPts = getArcPoints(e, seg.reversed);
+						for (const p of arcPts) {
+							shape.lineTo(p.x, p.y);
+						}
+					}
+				}
+				shape.closePath();
+
+				// Compute area
+				const pts = shape.getPoints(64);
+				let area = 0;
+				for (let i = 0; i < pts.length; i++) {
+					const j = (i + 1) % pts.length;
+					area += pts[i].x * pts[j].y;
+					area -= pts[j].x * pts[i].y;
+				}
+				area = Math.abs(area) / 2;
+
+				// Ensure CCW winding for the shape
+				const isCW = THREE.ShapeUtils.isClockWise(pts);
+				if (isCW) {
+					const reversed = [...pts].reverse();
+					const fixedShape = new THREE.Shape();
+					fixedShape.moveTo(reversed[0].x, reversed[0].y);
+					for (let k = 1; k < reversed.length; k++) {
+						fixedShape.lineTo(reversed[k].x, reversed[k].y);
+					}
+					fixedShape.closePath();
+					results.push({ shape: fixedShape, area, unusedSegments: [] });
+				} else {
+					results.push({ shape, area, unusedSegments: [] });
+				}
+			} else {
+				// Couldn't close the chain - release segments back
+				chain.forEach(seg => {
+					// Find and unmark the segment
+					for (let i = 0; i < segments.length; i++) {
+						if (segments[i].entity === seg.entity && used.has(i)) {
+							used.delete(i);
+							break;
+						}
+					}
+				});
+			}
+		}
+
+		// Collect unused segments
+		const unusedEntities: any[] = [];
+		for (let i = 0; i < segments.length; i++) {
+			if (!used.has(i)) {
+				unusedEntities.push(segments[i].entity);
+			}
+		}
+
+		// Attach unused to last result or create a standalone result
+		if (results.length > 0) {
+			results[results.length - 1].unusedSegments = unusedEntities;
+		} else {
+			results.push({ shape: new THREE.Shape(), area: 0, unusedSegments: unusedEntities });
+		}
+
+		return results;
+	};
+
 	const createEntityMesh = (entity: any): THREE.Object3D | null => {
 		const color = getEntityColor(entity);
 
@@ -348,6 +755,9 @@ export default function DXFViewer3D({
 						entity.vertices[1].z || 0
 					),
 				];
+				if (hasThickness) {
+					return createThickLines(points, color);
+				}
 				return createLine2FromPoints(points, color);
 			}
 
@@ -357,15 +767,19 @@ export default function DXFViewer3D({
 				const points = entity.vertices.map(
 					(v: any) => new THREE.Vector3(v.x, v.y, v.z || 0)
 				);
+
 				// Close the polyline if shape is closed
 				if (entity.shape) {
 					points.push(points[0].clone());
+				}
+				if (hasThickness) {
+					return createThickLines(points, color);
 				}
 				return createLine2FromPoints(points, color);
 			}
 
 			case 'CIRCLE': {
-				// Create circle from points
+				const cz = entity.center.z || 0;
 				const segments = 64;
 				const points: THREE.Vector3[] = [];
 				for (let i = 0; i <= segments; i++) {
@@ -374,15 +788,17 @@ export default function DXFViewer3D({
 						new THREE.Vector3(
 							entity.center.x + entity.radius * Math.cos(theta),
 							entity.center.y + entity.radius * Math.sin(theta),
-							entity.center.z || 0
+							cz
 						)
 					);
+				}
+				if (hasThickness) {
+					return createThickLines(points, color);
 				}
 				return createLine2FromPoints(points, color);
 			}
 
 			case 'ARC': {
-				// DXF arcs go counter-clockwise from startAngle to endAngle
 				const cx = entity.center.x;
 				const cy = entity.center.y;
 				const cz = entity.center.z || 0;
@@ -391,7 +807,6 @@ export default function DXFViewer3D({
 				const startAngle = entity.startAngle;
 				const endAngle = entity.endAngle;
 
-				// Calculate sweep angle (always counter-clockwise in DXF)
 				let sweep = endAngle - startAngle;
 				if (sweep <= 0) {
 					sweep += 2 * Math.PI;
@@ -410,6 +825,9 @@ export default function DXFViewer3D({
 							cz
 						)
 					);
+				}
+				if (hasThickness) {
+					return createThickLines(points, color);
 				}
 				return createLine2FromPoints(points, color);
 			}
@@ -442,6 +860,9 @@ export default function DXFViewer3D({
 				const points = curvePoints.map(
 					(p) => new THREE.Vector3(p.x, p.y, entity.center.z || 0)
 				);
+				if (hasThickness) {
+					return createThickLines(points, color);
+				}
 				return createLine2FromPoints(points, color);
 			}
 
@@ -453,6 +874,9 @@ export default function DXFViewer3D({
 				);
 				const curve = new THREE.CatmullRomCurve3(splinePoints);
 				const points = curve.getPoints(entity.controlPoints.length * 10);
+				if (hasThickness) {
+					return createThickLines(points, color);
+				}
 				return createLine2FromPoints(points, color);
 			}
 

@@ -31,6 +31,7 @@ const DXFViewer3D = dynamic(() => import('./DXFViewer3D'), {
 interface DXFViewerToggleProps {
 	dxfUrl?: string;
 	className?: string;
+	thickness?: number; // Material thickness in mm - required for 3D view
 }
 
 type ViewMode = '2D' | '3D';
@@ -38,8 +39,12 @@ type ViewMode = '2D' | '3D';
 export default function DXFViewerToggle({
 	dxfUrl,
 	className = '',
+	thickness,
 }: DXFViewerToggleProps) {
 	const [viewMode, setViewMode] = useState<ViewMode>('2D');
+
+	// 3D view is only available when thickness is specified and greater than 0
+	const has3DView = thickness !== undefined && thickness > 0;
 
 	if (!dxfUrl) {
 		return (
@@ -55,29 +60,37 @@ export default function DXFViewerToggle({
 
 	return (
 		<div className={`flex flex-col gap-3 ${className}`}>
-			{/* Toggle Buttons */}
-			<div className='flex gap-2 items-center justify-center'>
-				<Button
-					variant={viewMode === '2D' ? 'default' : 'outline'}
-					size='sm'
-					onClick={() => setViewMode('2D')}
-					className='min-w-[80px]'
-				>
-					2D View
-				</Button>
-				<Button
-					variant={viewMode === '3D' ? 'default' : 'outline'}
-					size='sm'
-					onClick={() => setViewMode('3D')}
-					className='min-w-[80px]'
-				>
-					3D View
-				</Button>
-			</div>
+			{/* Toggle Buttons - only show if 3D view is available */}
+			{has3DView ? (
+				<div className='flex gap-2 items-center justify-center'>
+					<Button
+						variant={viewMode === '2D' ? 'default' : 'outline'}
+						size='sm'
+						onClick={() => setViewMode('2D')}
+						className='min-w-[80px]'
+					>
+						2D View
+					</Button>
+					<Button
+						variant={viewMode === '3D' ? 'default' : 'outline'}
+						size='sm'
+						onClick={() => setViewMode('3D')}
+						className='min-w-[80px]'
+					>
+						3D View
+					</Button>
+				</div>
+			) : (
+				<div className='flex items-center justify-center p-2 bg-muted/50 rounded-md'>
+					<p className='text-sm text-muted-foreground'>
+						Vista 2D únicamente (selecciona un espesor para ver en 3D)
+					</p>
+				</div>
+			)}
 
 			{/* Viewer Container */}
 			<div className='w-full'>
-				{viewMode === '2D' ? (
+				{viewMode === '2D' || !has3DView ? (
 					<DXFViewerSimple
 						dxfUrl={dxfUrl}
 						className='w-full'
@@ -88,6 +101,7 @@ export default function DXFViewerToggle({
 						dxfUrl={dxfUrl}
 						className='w-full'
 						showControls={false}
+						thickness={thickness}
 					/>
 				)}
 			</div>

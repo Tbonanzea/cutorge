@@ -68,6 +68,7 @@ export default function MaterialSelectionCard({
 						<DXFViewerToggle
 							dxfUrl={item.file._blobUrl || item.file.filepath}
 							className='w-full'
+							thickness={item.materialType?.height}
 						/>
 					</div>
 
