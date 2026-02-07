@@ -18,8 +18,9 @@ import {
 	UploadCloud,
 	X,
 } from 'lucide-react';
-import { useCallback, useState, useEffect, useRef } from 'react';
+import { useCallback, useState, useRef } from 'react';
 import { FileRejection, useDropzone } from 'react-dropzone';
+import { toast } from 'sonner';
 import { validateDXFFile } from '@/lib/dxf-validation';
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
@@ -37,7 +38,6 @@ function FileUploader() {
 		cart,
 		addItem,
 		removeItem,
-		clearCart,
 		markStep,
 	} = useQuoting();
 
@@ -55,24 +55,35 @@ function FileUploader() {
 
 	const onDropAccepted = useCallback(
 		async (acceptedFiles: File[]) => {
+			// Limit new files to remaining capacity
+			const remainingSlots = MAX_FILES - cart.items.length;
+
+			if (remainingSlots <= 0) {
+				toast.error(`Ya tenés ${MAX_FILES} archivos cargados. Eliminá alguno para agregar más.`);
+				return;
+			}
+
 			setIsUploading(true);
 			setUploadProgress(0);
 			setUploadStatus('idle');
 			setUploadErrors([]);
 
-			// Cleanup existing blob URLs before clearing cart
-			blobUrlsRef.current.forEach((url) => {
-				URL.revokeObjectURL(url);
-			});
-			blobUrlsRef.current.clear();
-
-			clearCart();
+			const filesToProcess = acceptedFiles.slice(0, remainingSlots);
 
 			const newErrors: { fileName: string; error: string }[] = [];
-			let validFilesCount = 0;
+			let validFilesCount = cart.items.filter(
+				(item) => item.file._validationStatus === 'valid'
+			).length;
+
+			if (acceptedFiles.length > remainingSlots) {
+				newErrors.push({
+					fileName: '',
+					error: `Solo se pueden subir ${MAX_FILES} archivos en total. Se ignoraron ${acceptedFiles.length - remainingSlots} archivo(s).`,
+				});
+			}
 
 			let processed = 0;
-			for (const file of acceptedFiles) {
+			for (const file of filesToProcess) {
 				// Valida tipo/mime y extensión
 				if (!isDXF(file)) {
 					newErrors.push({
@@ -81,7 +92,7 @@ function FileUploader() {
 					});
 					processed++;
 					setUploadProgress(
-						Math.round((processed / acceptedFiles.length) * 100)
+						Math.round((processed / filesToProcess.length) * 100)
 					);
 					continue;
 				}
@@ -94,7 +105,7 @@ function FileUploader() {
 				const validationResult = await validateDXFFile(file);
 
 				setUploadProgress(
-					Math.round(((processed + 1) / acceptedFiles.length) * 100)
+					Math.round(((processed + 1) / filesToProcess.length) * 100)
 				);
 
 				if (!validationResult.isValid) {
@@ -151,10 +162,16 @@ function FileUploader() {
 			setUploadStatus(newErrors.length > 0 ? 'error' : 'success');
 			setIsUploading(false);
 
+			if (newErrors.length > 0) {
+				for (const err of newErrors) {
+					toast.error(err.fileName ? `${err.fileName}: ${err.error}` : err.error);
+				}
+			}
+
 			// Only mark step as complete if we have at least one VALID file
 			markStep('file-upload', validFilesCount > 0);
 		},
-		[addItem, clearCart, markStep]
+		[addItem, cart.items, markStep]
 	);
 
 	const onDropRejected = useCallback((fileRejections: FileRejection[]) => {
@@ -166,7 +183,13 @@ function FileUploader() {
 		);
 		setUploadErrors(rejections);
 		setUploadStatus('error');
+
+		for (const rejection of rejections) {
+			toast.error(`${rejection.fileName}: ${rejection.error}`);
+		}
 	}, []);
+
+	const remainingSlots = MAX_FILES - cart.items.length;
 
 	const { getRootProps, getInputProps, isDragActive } = useDropzone({
 		accept: {
@@ -174,7 +197,7 @@ function FileUploader() {
 		},
 		maxSize: MAX_FILE_SIZE,
 		multiple: true,
-		maxFiles: MAX_FILES,
+		maxFiles: Math.max(remainingSlots, 1),
 		onDropAccepted,
 		onDropRejected,
 		validator: (file) =>
@@ -195,6 +218,13 @@ function FileUploader() {
 			blobUrlsRef.current.delete(item.file._blobUrl);
 		}
 		removeItem(index);
+
+		// Re-evaluate step validity after removal
+		const remainingItems = cart.items.filter((_, i) => i !== index);
+		const hasValidFiles = remainingItems.some(
+			(item) => item.file._validationStatus === 'valid'
+		);
+		markStep('file-upload', hasValidFiles);
 	};
 
 	// Note: We intentionally don't cleanup blob URLs on unmount because

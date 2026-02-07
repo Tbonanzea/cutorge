@@ -7,6 +7,7 @@ import {
 import '@/styles/globals.css';
 import type { Metadata } from 'next';
 import { ReactNode } from 'react';
+import { Toaster } from 'sonner';
 import { Providers } from './providers';
 
 export const metadata: Metadata = {
@@ -69,6 +70,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
 					<Header />
 					<main className='flex-1 pt-20'>{children}</main>
 					<Footer />
+					<Toaster richColors position='top-right' />
 				</Providers>
 			</body>
 		</html>

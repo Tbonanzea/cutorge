@@ -55,6 +55,7 @@
 		"react-resizable-panels": "^3.0.2",
 		"resend": "^6.9.1",
 		"server-only": "^0.0.1",
+		"sonner": "^2.0.7",
 		"tailwind-merge": "^3.3.0",
 		"three": "^0.181.2",
 		"three-dxf-viewer": "^1.0.44",

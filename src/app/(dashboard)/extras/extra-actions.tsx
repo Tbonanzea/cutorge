@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Pencil, Trash2, ToggleLeft, ToggleRight, Loader2 } from 'lucide-react';
 import Link from 'next/link';
+import { toast } from 'sonner';
 import { deleteExtraService, toggleExtraServiceActive } from './actions';
 
 interface ExtraServiceActionsProps {
@@ -25,7 +26,7 @@ export function ExtraServiceActions({
 		setLoading(true);
 		const result = await toggleExtraServiceActive(extraId);
 		if (!result.success) {
-			alert(result.error);
+			toast.error(result.error);
 		}
 		setLoading(false);
 	};
@@ -43,7 +44,7 @@ export function ExtraServiceActions({
 		const result = await deleteExtraService(extraId);
 
 		if (!result.success) {
-			alert(result.error);
+			toast.error(result.error);
 		}
 
 		setLoading(false);

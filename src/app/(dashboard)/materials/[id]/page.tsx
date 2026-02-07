@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/table';
 import { ArrowLeft, Loader2, Plus, Trash2, Save } from 'lucide-react';
 import Link from 'next/link';
+import { toast } from 'sonner';
 import {
 	getMaterialById,
 	updateMaterial,
@@ -116,7 +117,7 @@ export default function EditMaterialPage() {
 					: null
 			);
 		} else {
-			alert(result.error);
+			toast.error(result.error);
 		}
 	};
 
