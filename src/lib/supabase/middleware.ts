@@ -27,11 +27,11 @@ export async function updateSession(request: NextRequest) {
 	if (sitePassword) {
 		const { pathname } = request.nextUrl;
 
-		// Check if route is exempt from site password
-		const isExempt = publicRoutes.includes(pathname) ||
-			publicPrefixes.some(prefix => pathname.startsWith(prefix));
+		// Only /access and /api/access are exempt from site password
+		const isPasswordExempt = pathname === '/access' ||
+			pathname.startsWith('/api/access');
 
-		if (!isExempt) {
+		if (!isPasswordExempt) {
 			// Check for access cookie
 			const accessCookie = request.cookies.get('site-access-granted');
 
