@@ -18,7 +18,35 @@ const publicPrefixes = [
 	'/api/webhooks/',
 ];
 
+// Routes exempt from site password protection
+const sitePasswordExemptRoutes = ['/access'];
+const sitePasswordExemptPrefixes = ['/api/access'];
+
 export async function updateSession(request: NextRequest) {
+	// Site-wide password protection check (before Supabase auth)
+	const sitePassword = process.env.SITE_PASSWORD;
+
+	if (sitePassword) {
+		const { pathname } = request.nextUrl;
+
+		// Check if route is exempt from site password
+		const isExemptRoute = sitePasswordExemptRoutes.includes(pathname);
+		const isExemptPrefix = sitePasswordExemptPrefixes.some(prefix =>
+			pathname.startsWith(prefix)
+		);
+
+		if (!isExemptRoute && !isExemptPrefix) {
+			// Check for access cookie
+			const accessCookie = request.cookies.get('site-access-granted');
+
+			if (!accessCookie) {
+				// No access cookie, redirect to /access page
+				const url = request.nextUrl.clone();
+				url.pathname = '/access';
+				return NextResponse.redirect(url);
+			}
+		}
+	}
 	let supabaseResponse = NextResponse.next({
 		request,
 	});
