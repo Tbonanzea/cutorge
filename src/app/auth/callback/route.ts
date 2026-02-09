@@ -18,12 +18,10 @@ export async function GET(request: Request) {
 		);
 
 		if (!error && data.user.email) {
-			const authProviders = data.user.app_metadata.providers
+			const authProviders = (data.user.app_metadata.providers ?? [])
 				.map((provider: string) => provider.toUpperCase())
-				.filter((provider: AuthProvider) =>
-					Object.values(AuthProvider).includes(
-						provider as AuthProvider
-					)
+				.filter((provider: string) =>
+					(Object.values(AuthProvider) as string[]).includes(provider)
 				) as AuthProvider[];
 
 			// if user doesn't exist, create
