@@ -3,12 +3,10 @@
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { LockKeyhole } from 'lucide-react';
-import { useRouter } from 'next/navigation';
 import { FormEvent, useState } from 'react';
 import { toast } from 'sonner';
 
 export default function AccessPage() {
-	const router = useRouter();
 	const [password, setPassword] = useState('');
 	const [isLoading, setIsLoading] = useState(false);
 
@@ -27,8 +25,7 @@ export default function AccessPage() {
 
 			if (response.ok) {
 				toast.success('Acceso concedido');
-				router.push('/');
-				router.refresh();
+				window.location.href = '/';
 			} else {
 				toast.error(data.error || 'Contraseña incorrecta');
 				setPassword('');
