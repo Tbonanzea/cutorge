@@ -4,11 +4,15 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import * as THREE from 'three';
 import { OrbitControls, Line2, LineGeometry, LineMaterial } from 'three-stdlib';
 import { validateDXF } from '@/lib/dxf-validation';
+import { createCustomGrid, createPackageBoundary } from '@/lib/three-grid';
+import { computeTotalDXFArea } from '@/lib/dxf-area';
 
 interface DXFViewer2DProps {
 	dxfUrl?: string;
 	className?: string;
 	showControls?: boolean; // Whether to show file upload and control buttons
+	maxPackageWidth?: number; // Maximum package width in cm
+	maxPackageHeight?: number; // Maximum package height in cm
 }
 
 const LINE_WIDTH = 2; // Line width in pixels
@@ -17,6 +21,8 @@ export default function DXFViewer2D({
 	dxfUrl,
 	className = '',
 	showControls = true,
+	maxPackageWidth,
+	maxPackageHeight,
 }: DXFViewer2DProps) {
 	const containerRef = useRef<HTMLDivElement>(null);
 	const sceneRef = useRef<THREE.Scene | null>(null);
@@ -24,6 +30,8 @@ export default function DXFViewer2D({
 	const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
 	const controlsRef = useRef<OrbitControls | null>(null);
 	const dxfObjectRef = useRef<THREE.Group | null>(null);
+	const gridRef = useRef<THREE.Group | null>(null);
+	const boundaryRef = useRef<Line2 | null>(null);
 	const animationFrameRef = useRef<number | null>(null);
 	const resolutionRef = useRef<THREE.Vector2>(new THREE.Vector2(1, 1));
 	const [isLoading, setIsLoading] = useState(false);
@@ -32,6 +40,7 @@ export default function DXFViewer2D({
 	const [selectedFile, setSelectedFile] = useState<File | null>(null);
 	const [entityCount, setEntityCount] = useState<number>(0);
 	const [dimensions, setDimensions] = useState<{ width: number; height: number } | null>(null);
+	const [area, setArea] = useState<number | null>(null);
 
 	useEffect(() => {
 		if (!containerRef.current) return;
@@ -85,10 +94,7 @@ export default function DXFViewer2D({
 			};
 			controlsRef.current = controls;
 
-			// Add grid helper for reference
-			const gridHelper = new THREE.GridHelper(500, 50, 0xcccccc, 0xe0e0e0);
-			gridHelper.rotation.x = Math.PI / 2;
-			scene.add(gridHelper);
+			// Grid will be added dynamically in parseDXF based on piece size
 
 			// Animation loop
 			const animate = () => {
@@ -129,6 +135,14 @@ export default function DXFViewer2D({
 				});
 			}
 
+			// Update boundary LineMaterial resolution
+			if (boundaryRef.current) {
+				const material = boundaryRef.current.material as LineMaterial;
+				if (material.resolution) {
+					material.resolution.set(width, height);
+				}
+			}
+
 			cameraRef.current.left = (-frustumSize * aspect) / 2;
 			cameraRef.current.right = (frustumSize * aspect) / 2;
 			cameraRef.current.top = frustumSize / 2;
@@ -162,16 +176,15 @@ export default function DXFViewer2D({
 			loadDXFFromPath(dxfUrl);
 		}
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [dxfUrl]);
+	}, [dxfUrl, maxPackageWidth, maxPackageHeight]);
 
-	const fitCameraToObject = useCallback((object: THREE.Group) => {
+	const fitCameraToObject = useCallback((object: THREE.Group, pieceBounds?: { width: number; height: number }) => {
 		if (!cameraRef.current || !controlsRef.current || !containerRef.current)
 			return;
 
 		const box = new THREE.Box3().setFromObject(object);
 		if (box.isEmpty()) return;
 
-		const center = box.getCenter(new THREE.Vector3());
 		const size = box.getSize(new THREE.Vector3());
 
 		// Store dimensions (DXF units are typically mm)
@@ -184,18 +197,30 @@ export default function DXFViewer2D({
 		const height = containerRef.current.clientHeight || 600;
 		const aspect = width / height;
 
+		// If package boundary exists, include it in the zoom calculation
+		let viewWidth = size.x;
+		let viewHeight = size.y;
+
+		if (maxPackageWidth && maxPackageHeight) {
+			// Convert cm to mm
+			const packageWidthMm = maxPackageWidth * 10;
+			const packageHeightMm = maxPackageHeight * 10;
+			viewWidth = Math.max(viewWidth, packageWidthMm);
+			viewHeight = Math.max(viewHeight, packageHeightMm);
+		}
+
 		// Calculate zoom to fit the object with padding
-		const maxDim = Math.max(size.x, size.y / aspect);
+		const maxDim = Math.max(viewWidth, viewHeight / aspect);
 		const padding = 1.2;
 		const zoom = 200 / (maxDim * padding);
 
 		cameraRef.current.zoom = Math.max(0.1, Math.min(zoom, 50));
-		cameraRef.current.position.set(center.x, center.y, 100);
+		cameraRef.current.position.set(0, 0, 100); // Target origin since piece is centered
 		cameraRef.current.updateProjectionMatrix();
 
-		controlsRef.current.target.set(center.x, center.y, 0);
+		controlsRef.current.target.set(0, 0, 0); // Target origin
 		controlsRef.current.update();
-	}, []);
+	}, [maxPackageWidth, maxPackageHeight]);
 
 
 	const loadDXFFromPath = async (path: string) => {
@@ -275,10 +300,63 @@ export default function DXFViewer2D({
 				throw new Error('No valid entities found in DXF file');
 			}
 
+			// Center the piece at the origin
+			const box = new THREE.Box3().setFromObject(group);
+			const center = box.getCenter(new THREE.Vector3());
+			group.position.set(-center.x, -center.y, -center.z);
+
+			// Get piece dimensions for grid
+			const size = box.getSize(new THREE.Vector3());
+			const pieceBounds = {
+				width: Math.abs(size.x),
+				height: Math.abs(size.y),
+			};
+
+			// Dispose previous grid and boundary
+			if (gridRef.current) {
+				disposeObject(gridRef.current);
+				sceneRef.current.remove(gridRef.current);
+				gridRef.current = null;
+			}
+			if (boundaryRef.current) {
+				boundaryRef.current.geometry?.dispose();
+				(boundaryRef.current.material as LineMaterial)?.dispose();
+				sceneRef.current.remove(boundaryRef.current);
+				boundaryRef.current = null;
+			}
+
+			// Create dynamic grid based on piece size
+			const customGrid = createCustomGrid({
+				pieceBounds,
+				cellSize: 10, // 10mm = 1cm
+				paddingMultiplier: 2.0,
+				minExtension: 300, // 30cm minimum
+			});
+			gridRef.current = customGrid;
+			sceneRef.current.add(customGrid);
+
+			// Create package boundary if dimensions are provided
+			if (maxPackageWidth && maxPackageHeight) {
+				const boundary = createPackageBoundary({
+					width: maxPackageWidth * 10, // Convert cm to mm
+					height: maxPackageHeight * 10,
+					resolution: resolutionRef.current,
+				});
+				boundaryRef.current = boundary;
+				sceneRef.current.add(boundary);
+			}
+
 			dxfObjectRef.current = group;
 			sceneRef.current.add(group);
 			setEntityCount(renderedCount);
-			fitCameraToObject(group);
+
+			// Compute total area of closed shapes
+			if (dxf.entities) {
+				const totalArea = computeTotalDXFArea(dxf.entities);
+				setArea(totalArea > 0 ? totalArea : null);
+			}
+
+			fitCameraToObject(group, pieceBounds);
 
 			console.log('DXF rendered with', renderedCount, 'entities');
 		} catch (err) {
@@ -537,6 +615,7 @@ export default function DXFViewer2D({
 		setValidationErrors([]);
 		setEntityCount(0);
 		setDimensions(null);
+		setArea(null);
 
 		// Reset camera
 		if (cameraRef.current && controlsRef.current) {
@@ -589,15 +668,21 @@ export default function DXFViewer2D({
 							)}
 						</span>
 					)}
-					{dimensions && (
-						<div className='flex gap-3 text-sm'>
-							<span className='px-2 py-0.5 bg-blue-100 text-blue-700 rounded'>
-								W: {dimensions.width.toFixed(2)} mm
-							</span>
-							<span className='px-2 py-0.5 bg-blue-100 text-blue-700 rounded'>
-								H: {dimensions.height.toFixed(2)} mm
-							</span>
-						</div>
+				</div>
+			)}
+
+			{dimensions && (
+				<div className='flex gap-3 text-sm flex-wrap'>
+					<span className='px-2 py-0.5 bg-blue-100 text-blue-700 rounded'>
+						W: {dimensions.width.toFixed(2)} mm
+					</span>
+					<span className='px-2 py-0.5 bg-blue-100 text-blue-700 rounded'>
+						H: {dimensions.height.toFixed(2)} mm
+					</span>
+					{area !== null && area > 0 && (
+						<span className='px-2 py-0.5 bg-purple-100 text-purple-700 rounded'>
+							A: {(area / 100).toFixed(2)} cm²
+						</span>
 					)}
 				</div>
 			)}

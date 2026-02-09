@@ -69,6 +69,8 @@ export default function MaterialSelectionCard({
 							dxfUrl={item.file._blobUrl || item.file.filepath}
 							className='w-full'
 							thickness={item.materialType?.height}
+							maxPackageWidth={100}
+							maxPackageHeight={200}
 						/>
 					</div>
 
