@@ -42,7 +42,7 @@ export default function AccessPage() {
 	}
 
 	return (
-		<div className='min-h-[calc(100vh-5rem)] flex items-center justify-center px-4'>
+		<div className='fixed inset-0 z-50 bg-white dark:bg-slate-950 flex items-center justify-center px-4'>
 			<div className='w-full max-w-md'>
 				<div className='bg-white dark:bg-slate-900 rounded-lg shadow-lg border border-slate-200 dark:border-slate-800 p-8'>
 					<div className='flex flex-col items-center mb-8'>
