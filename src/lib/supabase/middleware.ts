@@ -11,16 +11,14 @@ const publicRoutes = [
 	'/auth/callback',
 	'/about',
 	'/guidelines',
+	'/access',
 ];
 
 // Routes that start with these prefixes are public (webhooks, etc.)
 const publicPrefixes = [
 	'/api/webhooks/',
+	'/api/access',
 ];
-
-// Routes exempt from site password protection
-const sitePasswordExemptRoutes = ['/access'];
-const sitePasswordExemptPrefixes = ['/api/access'];
 
 export async function updateSession(request: NextRequest) {
 	// Site-wide password protection check (before Supabase auth)
@@ -30,17 +28,14 @@ export async function updateSession(request: NextRequest) {
 		const { pathname } = request.nextUrl;
 
 		// Check if route is exempt from site password
-		const isExemptRoute = sitePasswordExemptRoutes.includes(pathname);
-		const isExemptPrefix = sitePasswordExemptPrefixes.some(prefix =>
-			pathname.startsWith(prefix)
-		);
+		const isExempt = publicRoutes.includes(pathname) ||
+			publicPrefixes.some(prefix => pathname.startsWith(prefix));
 
-		if (!isExemptRoute && !isExemptPrefix) {
+		if (!isExempt) {
 			// Check for access cookie
 			const accessCookie = request.cookies.get('site-access-granted');
 
 			if (!accessCookie) {
-				// No access cookie, redirect to /access page
 				const url = request.nextUrl.clone();
 				url.pathname = '/access';
 				return NextResponse.redirect(url);
