@@ -12,10 +12,7 @@
 		},
 		"playwright": {
 			"command": "npx",
-			"args": [
-				"-y",
-				"@modelcontextprotocol/server-playwright"
-			],
+			"args": ["-y", "@modelcontextprotocol/server-playwright"],
 			"disabled": true,
 			"description": "Browser automation for E2E testing (enable when needed)",
 			"env": {
@@ -70,9 +67,7 @@
 		"onBuild": true
 	},
 	"rules": {
-		"loadRulesFrom": [
-			".claude/rules"
-		]
+		"loadRulesFrom": [".claude/rules"]
 	},
 	"permissions": {
 		"allow": [
@@ -88,5 +83,8 @@
 			"Grep(*)",
 			"Task(*)"
 		]
+	},
+	"env": {
+		"CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
 	}
 }

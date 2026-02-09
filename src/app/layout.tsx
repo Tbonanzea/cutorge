@@ -5,13 +5,16 @@ import {
 	WebsiteJsonLd,
 } from '@/components/StructuredData';
 import '@/styles/globals.css';
+import { Analytics } from '@vercel/analytics/next';
 import type { Metadata } from 'next';
 import { ReactNode } from 'react';
 import { Toaster } from 'sonner';
 import { Providers } from './providers';
 
 export const metadata: Metadata = {
-	metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://cutforge.com'),
+	metadataBase: new URL(
+		process.env.NEXT_PUBLIC_SITE_URL || 'https://cutforge.com',
+	),
 	title: {
 		default: 'CutForge - Corte Láser y CNC Personalizado',
 		template: '%s | CutForge',
@@ -72,6 +75,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
 					<Footer />
 					<Toaster richColors position='top-right' />
 				</Providers>
+				<Analytics />
 			</body>
 		</html>
 	);
