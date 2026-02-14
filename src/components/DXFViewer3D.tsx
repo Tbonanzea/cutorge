@@ -214,9 +214,17 @@ export default function DXFViewer3D({
 		let viewHeight = size.y;
 
 		if (maxPackageWidth && maxPackageHeight) {
-			// Convert cm to mm
-			const packageWidthMm = maxPackageWidth * 10;
-			const packageHeightMm = maxPackageHeight * 10;
+			// Convert cm to mm and auto-align with piece orientation
+			let packageWidthMm = maxPackageWidth * 10;
+			let packageHeightMm = maxPackageHeight * 10;
+
+			const pieceIsWiderThanTall = size.x >= size.y;
+			const packageIsWiderThanTall = packageWidthMm >= packageHeightMm;
+
+			if (pieceIsWiderThanTall !== packageIsWiderThanTall) {
+				[packageWidthMm, packageHeightMm] = [packageHeightMm, packageWidthMm];
+			}
+
 			viewWidth = Math.max(viewWidth, packageWidthMm);
 			viewHeight = Math.max(viewHeight, packageHeightMm);
 		}
@@ -487,10 +495,21 @@ export default function DXFViewer3D({
 			sceneRef.current.add(customGrid);
 
 			// Create package boundary if dimensions are provided (at z=0, base of extruded piece)
+			// Auto-align: swap package dimensions so its longest side matches the piece's longest side
 			if (maxPackageWidth && maxPackageHeight) {
+				let pkgW = maxPackageWidth * 10; // Convert cm to mm
+				let pkgH = maxPackageHeight * 10;
+
+				const pieceIsWiderThanTall = pieceBounds.width >= pieceBounds.height;
+				const packageIsWiderThanTall = pkgW >= pkgH;
+
+				if (pieceIsWiderThanTall !== packageIsWiderThanTall) {
+					[pkgW, pkgH] = [pkgH, pkgW];
+				}
+
 				const boundary = createPackageBoundary({
-					width: maxPackageWidth * 10, // Convert cm to mm
-					height: maxPackageHeight * 10,
+					width: pkgW,
+					height: pkgH,
 					resolution: resolutionRef.current,
 				});
 				boundaryRef.current = boundary;
