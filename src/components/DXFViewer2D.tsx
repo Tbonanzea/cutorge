@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import { OrbitControls, Line2, LineGeometry, LineMaterial } from 'three-stdlib';
 import { validateDXF } from '@/lib/dxf-validation';
 import { createCustomGrid, createPackageBoundary } from '@/lib/three-grid';
-import { computeTotalDXFArea } from '@/lib/dxf-area';
+import { computeTotalDXFArea, getClosedShapeFromEntity } from '@/lib/dxf-area';
 import { evaluateBSplineCurve } from '@/lib/bspline';
 
 interface DXFViewer2DProps {
@@ -350,6 +350,18 @@ export default function DXFViewer2D({
 
 			// Parse entities
 			if (dxf.entities && Array.isArray(dxf.entities)) {
+				// Log closed entities analysis
+				let closedCount = 0;
+				const closedByType: Record<string, number> = {};
+				dxf.entities.forEach((entity: any) => {
+					const closed = getClosedShapeFromEntity(entity);
+					if (closed) {
+						closedCount++;
+						closedByType[entity.type] = (closedByType[entity.type] || 0) + 1;
+					}
+				});
+				console.log(`[DXF2D] Total entities: ${dxf.entities.length} | Closed entities: ${closedCount}`, closedByType);
+
 				dxf.entities.forEach((entity: any) => {
 					try {
 						const mesh = createEntityMesh(entity);
@@ -428,9 +440,9 @@ export default function DXFViewer2D({
 			sceneRef.current.add(group);
 			setEntityCount(renderedCount);
 
-			// Compute total area of closed shapes
+			// Compute total area using contour chaining
 			if (dxf.entities) {
-				const totalArea = computeTotalDXFArea(dxf.entities);
+				const totalArea = computeTotalDXFArea(dxf.entities, dxf.blocks);
 				setArea(totalArea > 0 ? totalArea : null);
 			}
 

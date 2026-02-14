@@ -349,9 +349,21 @@ export default function DXFViewer3D({
 
 			// Parse entities
 			if (dxf.entities && Array.isArray(dxf.entities)) {
+				// Log closed entities analysis
+				let closedCount = 0;
+				const closedByType: Record<string, number> = {};
+				dxf.entities.forEach((entity: any) => {
+					const closed = getClosedShapeFromEntity(entity);
+					if (closed) {
+						closedCount++;
+						closedByType[entity.type] = (closedByType[entity.type] || 0) + 1;
+					}
+				});
+				console.log(`[DXF3D] Total entities: ${dxf.entities.length} | Closed entities: ${closedCount}`, closedByType);
+
 				if (hasThickness) {
 					// Collect single-entity closed shapes and chainable segments
-					const singleClosedShapes: { shape: THREE.Shape; area: number }[] = [];
+					const singleClosedShapes: { shape: THREE.Shape; area: number; isAssembled: false }[] = [];
 					const chainableSegments: {
 						start: { x: number; y: number };
 						end: { x: number; y: number };
@@ -362,7 +374,7 @@ export default function DXFViewer3D({
 					dxf.entities.forEach((entity: any) => {
 						const closed = getClosedShapeFromEntity(entity);
 						if (closed) {
-							singleClosedShapes.push(closed);
+							singleClosedShapes.push({ ...closed, isAssembled: false });
 						} else {
 							const seg = getSegmentEndpoints(entity);
 							if (seg) {
@@ -376,9 +388,9 @@ export default function DXFViewer3D({
 					// Assemble chainable segments into closed loops
 					const assembledShapes = assembleClosedPaths(chainableSegments);
 
-					// Combine all closed shapes
+					// Combine all closed shapes with metadata
 					const allClosedShapes = [
-						...assembledShapes.map(s => ({ shape: s.shape, area: s.area })),
+						...assembledShapes.map(s => ({ shape: s.shape, area: s.area, isAssembled: true })),
 						...singleClosedShapes,
 					];
 
@@ -410,7 +422,7 @@ export default function DXFViewer3D({
 							let cx = 0, cy = 0;
 							for (const p of pts) { cx += p.x; cy += p.y; }
 							cx /= pts.length; cy /= pts.length;
-							return { ...s, pts, cx, cy };
+							return { ...s, pts, cx, cy, isAssembled: s.isAssembled };
 						});
 
 						// Determine nesting depth using even-odd rule
@@ -435,6 +447,7 @@ export default function DXFViewer3D({
 
 						// Build the outer shape with depth-1 holes
 						const outerShape = shapeData[0].shape;
+						const outerIsAssembled = shapeData[0].isAssembled;
 						for (let i = 1; i < shapeData.length; i++) {
 							if (depths[i] !== 1) continue; // Only direct holes
 							const holePoints = shapeData[i].pts;
@@ -449,7 +462,9 @@ export default function DXFViewer3D({
 							outerShape.holes.push(holePath);
 						}
 
-						const extruded = createExtrudedShape(outerShape, 0x333333, 0);
+						// Color: RED for assembled paths, GREEN for single closed entities
+						const outerColor = outerIsAssembled ? 0xff0000 : 0x00ff00;
+						const extruded = createExtrudedShape(outerShape, outerColor, 0);
 						group.add(extruded);
 						renderedCount += allClosedShapes.length;
 
@@ -457,6 +472,7 @@ export default function DXFViewer3D({
 						for (let i = 1; i < shapeData.length; i++) {
 							if (depths[i] < 2 || depths[i] % 2 !== 0) continue; // Even depth = material
 							const islandShape = shapeData[i].shape;
+							const islandIsAssembled = shapeData[i].isAssembled;
 							// Add any depth+1 shapes inside this island as holes
 							for (let j = 0; j < shapeData.length; j++) {
 								if (j === i || depths[j] !== depths[i] + 1) continue;
@@ -473,7 +489,9 @@ export default function DXFViewer3D({
 									islandShape.holes.push(holePath);
 								}
 							}
-							const islandExtruded = createExtrudedShape(islandShape, 0x333333, 0);
+							// Color: RED for assembled paths, GREEN for single closed entities
+							const islandColor = islandIsAssembled ? 0xff0000 : 0x00ff00;
+							const islandExtruded = createExtrudedShape(islandShape, islandColor, 0);
 							group.add(islandExtruded);
 						}
 					}
@@ -586,9 +604,9 @@ export default function DXFViewer3D({
 			sceneRef.current.add(group);
 			setEntityCount(renderedCount);
 
-			// Compute total area of closed shapes
+			// Compute total area using contour chaining
 			if (dxf.entities) {
-				const totalArea = computeTotalDXFArea(dxf.entities);
+				const totalArea = computeTotalDXFArea(dxf.entities, dxf.blocks);
 				setArea(totalArea > 0 ? totalArea : null);
 			}
 
