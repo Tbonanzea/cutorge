@@ -6,6 +6,7 @@ import { OrbitControls, Line2, LineGeometry, LineMaterial } from 'three-stdlib';
 import { validateDXF } from '@/lib/dxf-validation';
 import { createCustomGrid, createPackageBoundary } from '@/lib/three-grid';
 import { computeArea, getClosedShapeFromEntity, computeTotalDXFArea } from '@/lib/dxf-area';
+import { evaluateBSplineCurve, getBSplineStartPoint, getBSplineEndPoint } from '@/lib/bspline';
 
 interface DXFViewer3DProps {
 	dxfUrl?: string;
@@ -390,12 +391,53 @@ export default function DXFViewer3D({
 						// Sort by area descending - largest is the outer boundary
 						allClosedShapes.sort((a, b) => b.area - a.area);
 
-						const outerShape = allClosedShapes[0].shape;
+						// Point-in-polygon test for containment
+						const pointInShape = (px: number, py: number, shapePoints: THREE.Vector2[]) => {
+							let inside = false;
+							for (let i = 0, j = shapePoints.length - 1; i < shapePoints.length; j = i++) {
+								const xi = shapePoints[i].x, yi = shapePoints[i].y;
+								const xj = shapePoints[j].x, yj = shapePoints[j].y;
+								if (((yi > py) !== (yj > py)) && (px < (xj - xi) * (py - yi) / (yj - yi) + xi)) {
+									inside = !inside;
+								}
+							}
+							return inside;
+						};
 
-						// Add all smaller closed shapes as holes
-						for (let i = 1; i < allClosedShapes.length; i++) {
-							const holePoints = allClosedShapes[i].shape.getPoints(64);
-							// Ensure hole is clockwise (opposite of outer)
+						// Compute centroid and points for each shape
+						const shapeData = allClosedShapes.map(s => {
+							const pts = s.shape.getPoints(64);
+							let cx = 0, cy = 0;
+							for (const p of pts) { cx += p.x; cy += p.y; }
+							cx /= pts.length; cy /= pts.length;
+							return { ...s, pts, cx, cy };
+						});
+
+						// Determine nesting depth using even-odd rule
+						// Depth 0 = outer boundary (material), depth 1 = hole, depth 2 = island, etc.
+						const depths = shapeData.map((s, i) => {
+							let depth = 0;
+							for (let j = 0; j < shapeData.length; j++) {
+								if (j === i) continue;
+								// Only count larger shapes as potential parents
+								if (shapeData[j].area <= s.area) continue;
+								if (pointInShape(s.cx, s.cy, shapeData[j].pts)) {
+									depth++;
+								}
+							}
+							return depth;
+						});
+
+						// Depth 0: outer boundary (material)
+						// Depth 1: holes in outer boundary
+						// Depth 2: islands inside holes (material again)
+						// Depth 3: holes inside islands, etc.
+
+						// Build the outer shape with depth-1 holes
+						const outerShape = shapeData[0].shape;
+						for (let i = 1; i < shapeData.length; i++) {
+							if (depths[i] !== 1) continue; // Only direct holes
+							const holePoints = shapeData[i].pts;
 							const isCW = THREE.ShapeUtils.isClockWise(holePoints);
 							const orderedPoints = isCW ? holePoints : [...holePoints].reverse();
 							const holePath = new THREE.Path();
@@ -410,6 +452,30 @@ export default function DXFViewer3D({
 						const extruded = createExtrudedShape(outerShape, 0x333333, 0);
 						group.add(extruded);
 						renderedCount += allClosedShapes.length;
+
+						// Extrude islands (depth 2+) as separate filled shapes
+						for (let i = 1; i < shapeData.length; i++) {
+							if (depths[i] < 2 || depths[i] % 2 !== 0) continue; // Even depth = material
+							const islandShape = shapeData[i].shape;
+							// Add any depth+1 shapes inside this island as holes
+							for (let j = 0; j < shapeData.length; j++) {
+								if (j === i || depths[j] !== depths[i] + 1) continue;
+								if (pointInShape(shapeData[j].cx, shapeData[j].cy, shapeData[i].pts)) {
+									const holePoints = shapeData[j].pts;
+									const isCW = THREE.ShapeUtils.isClockWise(holePoints);
+									const orderedPoints = isCW ? holePoints : [...holePoints].reverse();
+									const holePath = new THREE.Path();
+									holePath.moveTo(orderedPoints[0].x, orderedPoints[0].y);
+									for (let k = 1; k < orderedPoints.length; k++) {
+										holePath.lineTo(orderedPoints[k].x, orderedPoints[k].y);
+									}
+									holePath.closePath();
+									islandShape.holes.push(holePath);
+								}
+							}
+							const islandExtruded = createExtrudedShape(islandShape, 0x333333, 0);
+							group.add(islandExtruded);
+						}
 					}
 
 					// Render any remaining entities that couldn't be assembled
@@ -599,12 +665,34 @@ export default function DXFViewer3D({
 		mesh.position.z = baseZ;
 		group.add(mesh);
 
-		// Edge wireframe for clarity
-		const edges = new THREE.EdgesGeometry(geometry, 15);
-		const edgeMaterial = new THREE.LineBasicMaterial({ color: color || 0x333333 });
-		const edgeLines = new THREE.LineSegments(edges, edgeMaterial);
-		edgeLines.position.z = baseZ;
-		group.add(edgeLines);
+		// Outline edges from shape and holes (batched into single geometry)
+		const edgeVerts: number[] = [];
+		const addOutlineAtZ = (z: number) => {
+			const outlinePoints = shape.getPoints(64);
+			for (let i = 0; i < outlinePoints.length; i++) {
+				const a = outlinePoints[i];
+				const b = outlinePoints[(i + 1) % outlinePoints.length];
+				edgeVerts.push(a.x, a.y, z, b.x, b.y, z);
+			}
+			for (const hole of shape.holes) {
+				const holePoints = hole.getPoints(64);
+				for (let i = 0; i < holePoints.length; i++) {
+					const a = holePoints[i];
+					const b = holePoints[(i + 1) % holePoints.length];
+					edgeVerts.push(a.x, a.y, z, b.x, b.y, z);
+				}
+			}
+		};
+		addOutlineAtZ(baseZ);
+		addOutlineAtZ(baseZ + thickness!);
+		if (edgeVerts.length > 0) {
+			const edgeGeo = new THREE.BufferGeometry();
+			edgeGeo.setAttribute('position', new THREE.Float32BufferAttribute(edgeVerts, 3));
+			const edgeMaterial = new THREE.LineBasicMaterial({ color: color || 0x333333 });
+			const edgeLines = new THREE.LineSegments(edgeGeo, edgeMaterial);
+			edgeLines.position.z = 0;
+			group.add(edgeLines);
+		}
 
 		return group;
 	};
@@ -649,6 +737,37 @@ export default function DXFViewer3D({
 					end: { x: cx + r * Math.cos(ea), y: cy + r * Math.sin(ea) },
 				};
 			}
+			case 'SPLINE': {
+				if (!entity.controlPoints || entity.controlPoints.length < 2) return null;
+				if (entity.closed) return null; // Closed splines handled separately
+				if (entity.knotValues && entity.knotValues.length > 0 && entity.degreeOfSplineCurve) {
+					const cp = entity.controlPoints.map((p: any) => ({ x: p.x, y: p.y, z: p.z || 0 }));
+					const startPt = getBSplineStartPoint(entity.degreeOfSplineCurve, cp, entity.knotValues);
+					const endPt = getBSplineEndPoint(entity.degreeOfSplineCurve, cp, entity.knotValues);
+					return {
+						start: { x: startPt.x, y: startPt.y },
+						end: { x: endPt.x, y: endPt.y },
+					};
+				}
+				// Fallback to first/last control points
+				const first = entity.controlPoints[0];
+				const last = entity.controlPoints[entity.controlPoints.length - 1];
+				return {
+					start: { x: first.x, y: first.y },
+					end: { x: last.x, y: last.y },
+				};
+			}
+			case 'LWPOLYLINE':
+			case 'POLYLINE': {
+				if (!entity.vertices || entity.vertices.length < 2) return null;
+				if (entity.shape) return null; // Closed polylines handled separately
+				const firstV = entity.vertices[0];
+				const lastV = entity.vertices[entity.vertices.length - 1];
+				return {
+					start: { x: firstV.x, y: firstV.y },
+					end: { x: lastV.x, y: lastV.y },
+				};
+			}
 			default:
 				return null;
 		}
@@ -683,6 +802,25 @@ export default function DXFViewer3D({
 			}
 		}
 		return points;
+	};
+
+	// Generate intermediate points along a SPLINE for use in Shape/Path
+	const getSplinePoints = (entity: any, reverse: boolean): { x: number; y: number }[] => {
+		let pts: { x: number; y: number }[];
+		if (entity.knotValues && entity.knotValues.length > 0 && entity.degreeOfSplineCurve) {
+			const cp = entity.controlPoints.map((p: any) => ({ x: p.x, y: p.y, z: p.z || 0 }));
+			const evaluated = evaluateBSplineCurve(entity.degreeOfSplineCurve, cp, entity.knotValues);
+			pts = evaluated.map((p) => ({ x: p.x, y: p.y }));
+		} else {
+			pts = entity.controlPoints.map((p: any) => ({ x: p.x, y: p.y }));
+		}
+		if (reverse) {
+			pts = pts.slice().reverse();
+			// Skip first point (it's the segment start, already added)
+			return pts.slice(1);
+		}
+		// Skip first point (it's the segment start, already added)
+		return pts.slice(1);
 	};
 
 	// Assemble open LINE/ARC segments into closed paths by chaining endpoints
@@ -756,6 +894,18 @@ export default function DXFViewer3D({
 						const arcPts = getArcPoints(e, seg.reversed);
 						for (const p of arcPts) {
 							shape.lineTo(p.x, p.y);
+						}
+					} else if (e.type === 'SPLINE') {
+						const splinePts = getSplinePoints(e, seg.reversed);
+						for (const p of splinePts) {
+							shape.lineTo(p.x, p.y);
+						}
+					} else if (e.type === 'LWPOLYLINE' || e.type === 'POLYLINE') {
+						const verts = e.vertices as { x: number; y: number }[];
+						const ordered = seg.reversed ? [...verts].reverse() : verts;
+						// Skip first point (it's the segment start, already in the shape)
+						for (let vi = 1; vi < ordered.length; vi++) {
+							shape.lineTo(ordered[vi].x, ordered[vi].y);
 						}
 					}
 				}
@@ -949,11 +1099,18 @@ export default function DXFViewer3D({
 			case 'SPLINE': {
 				if (!entity.controlPoints || entity.controlPoints.length < 2)
 					return null;
-				const splinePoints = entity.controlPoints.map(
-					(p: any) => new THREE.Vector3(p.x, p.y, p.z || 0)
-				);
-				const curve = new THREE.CatmullRomCurve3(splinePoints);
-				const points = curve.getPoints(entity.controlPoints.length * 10);
+				let points: THREE.Vector3[];
+				if (entity.knotValues && entity.knotValues.length > 0 && entity.degreeOfSplineCurve) {
+					const cp = entity.controlPoints.map((p: any) => ({ x: p.x, y: p.y, z: p.z || 0 }));
+					const evaluated = evaluateBSplineCurve(entity.degreeOfSplineCurve, cp, entity.knotValues);
+					points = evaluated.map((p) => new THREE.Vector3(p.x, p.y, p.z));
+				} else if (entity.fitPoints && entity.fitPoints.length >= 2) {
+					const fitPts = entity.fitPoints.map((p: any) => new THREE.Vector3(p.x, p.y, p.z || 0));
+					const curve = new THREE.CatmullRomCurve3(fitPts);
+					points = curve.getPoints(entity.fitPoints.length * 10);
+				} else {
+					points = entity.controlPoints.map((p: any) => new THREE.Vector3(p.x, p.y, p.z || 0));
+				}
 				if (hasThickness) {
 					return createThickLines(points, color);
 				}

@@ -12,6 +12,7 @@ const publicRoutes = [
 	'/about',
 	'/guidelines',
 	'/access',
+	'/dxf-test',
 ];
 
 // Routes that start with these prefixes are public (webhooks, etc.)

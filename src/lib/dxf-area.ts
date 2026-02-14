@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { evaluateBSplineCurve } from './bspline';
 
 /**
  * Compute 2D polygon area using the shoelace formula.
@@ -71,6 +72,25 @@ export function getClosedShapeFromEntity(entity: any): { shape: THREE.Shape; are
 			}
 			shape.closePath();
 			return { shape, area: Math.PI * majorRadius * minorRadius };
+		}
+		case 'SPLINE': {
+			if (!entity.closed || !entity.controlPoints || entity.controlPoints.length < 3) return null;
+			let pts: { x: number; y: number }[];
+			if (entity.knotValues && entity.knotValues.length > 0 && entity.degreeOfSplineCurve) {
+				const cp = entity.controlPoints.map((p: any) => ({ x: p.x, y: p.y, z: p.z || 0 }));
+				const evaluated = evaluateBSplineCurve(entity.degreeOfSplineCurve, cp, entity.knotValues);
+				pts = evaluated.map((p) => ({ x: p.x, y: p.y }));
+			} else {
+				pts = entity.controlPoints.map((p: any) => ({ x: p.x, y: p.y }));
+			}
+			if (pts.length < 3) return null;
+			const shape = new THREE.Shape();
+			shape.moveTo(pts[0].x, pts[0].y);
+			for (let i = 1; i < pts.length; i++) {
+				shape.lineTo(pts[i].x, pts[i].y);
+			}
+			shape.closePath();
+			return { shape, area: computeArea(pts) };
 		}
 		default:
 			return null;

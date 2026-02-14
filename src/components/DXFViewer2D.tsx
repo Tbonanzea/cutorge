@@ -6,6 +6,7 @@ import { OrbitControls, Line2, LineGeometry, LineMaterial } from 'three-stdlib';
 import { validateDXF } from '@/lib/dxf-validation';
 import { createCustomGrid, createPackageBoundary } from '@/lib/three-grid';
 import { computeTotalDXFArea } from '@/lib/dxf-area';
+import { evaluateBSplineCurve } from '@/lib/bspline';
 
 interface DXFViewer2DProps {
 	dxfUrl?: string;
@@ -602,11 +603,22 @@ export default function DXFViewer2D({
 			case 'SPLINE': {
 				if (!entity.controlPoints || entity.controlPoints.length < 2)
 					return null;
-				const splinePoints = entity.controlPoints.map(
-					(p: any) => new THREE.Vector3(p.x, p.y, p.z || 0)
-				);
-				const curve = new THREE.CatmullRomCurve3(splinePoints);
-				const points = curve.getPoints(entity.controlPoints.length * 10);
+				if (entity.knotValues && entity.knotValues.length > 0 && entity.degreeOfSplineCurve) {
+					// Proper B-spline evaluation using De Boor algorithm
+					const cp = entity.controlPoints.map((p: any) => ({ x: p.x, y: p.y, z: p.z || 0 }));
+					const evaluated = evaluateBSplineCurve(entity.degreeOfSplineCurve, cp, entity.knotValues);
+					const points = evaluated.map((p) => new THREE.Vector3(p.x, p.y, p.z));
+					return createLine2FromPoints(points, color);
+				}
+				if (entity.fitPoints && entity.fitPoints.length >= 2) {
+					// Fit points: CatmullRom is correct interpolation
+					const fitPts = entity.fitPoints.map((p: any) => new THREE.Vector3(p.x, p.y, p.z || 0));
+					const curve = new THREE.CatmullRomCurve3(fitPts);
+					const points = curve.getPoints(entity.fitPoints.length * 10);
+					return createLine2FromPoints(points, color);
+				}
+				// Fallback: connect control points directly
+				const points = entity.controlPoints.map((p: any) => new THREE.Vector3(p.x, p.y, p.z || 0));
 				return createLine2FromPoints(points, color);
 			}
 
