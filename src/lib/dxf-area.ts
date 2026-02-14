@@ -590,6 +590,175 @@ function expandInserts(entities: any[], blocks?: Record<string, any>): any[] {
 }
 
 /**
+ * Compute total piercings in a DXF file.
+ * Total piercings = single closed entities + assembled closed paths.
+ * This count is used for CNC cutting cost estimation.
+ *
+ * @param entities - Array of DXF entities
+ * @param blocks - Optional blocks object for expanding INSERT entities
+ * @returns Number of piercings (closed shapes)
+ */
+export interface PiercingsResult {
+	singleClosed: number;
+	assembledPaths: number;
+	total: number;
+}
+
+/**
+ * Extract start/end endpoints from an open entity for greedy chaining.
+ * Mirrors DXFViewer3D's getSegmentEndpoints logic.
+ */
+function getChainableEndpoints(entity: any): { start: Point2D; end: Point2D } | null {
+	switch (entity.type) {
+		case 'LINE': {
+			if (!entity.vertices || entity.vertices.length < 2) return null;
+			return {
+				start: { x: entity.vertices[0].x, y: entity.vertices[0].y },
+				end: { x: entity.vertices[1].x, y: entity.vertices[1].y },
+			};
+		}
+		case 'ARC': {
+			if (!entity.center || !entity.radius) return null;
+			const cx = entity.center.x;
+			const cy = entity.center.y;
+			const r = entity.radius;
+			const sa = entity.startAngle ?? 0;
+			const ea = entity.endAngle ?? 0;
+			return {
+				start: { x: cx + r * Math.cos(sa), y: cy + r * Math.sin(sa) },
+				end: { x: cx + r * Math.cos(ea), y: cy + r * Math.sin(ea) },
+			};
+		}
+		case 'SPLINE': {
+			if (!entity.controlPoints || entity.controlPoints.length < 2) return null;
+			if (entity.closed) return null; // Closed splines handled by getClosedShapeFromEntity
+			if (entity.knotValues && entity.knotValues.length > 0 && entity.degreeOfSplineCurve) {
+				const cp = entity.controlPoints.map((p: any) => ({ x: p.x, y: p.y, z: p.z || 0 }));
+				const evaluated = evaluateBSplineCurve(entity.degreeOfSplineCurve, cp, entity.knotValues);
+				if (evaluated.length < 2) return null;
+				const first = evaluated[0];
+				const last = evaluated[evaluated.length - 1];
+				return {
+					start: { x: first.x, y: first.y },
+					end: { x: last.x, y: last.y },
+				};
+			}
+			const first = entity.controlPoints[0];
+			const last = entity.controlPoints[entity.controlPoints.length - 1];
+			return {
+				start: { x: first.x, y: first.y },
+				end: { x: last.x, y: last.y },
+			};
+		}
+		case 'LWPOLYLINE':
+		case 'POLYLINE': {
+			if (!entity.vertices || entity.vertices.length < 2) return null;
+			if (entity.shape) return null; // Closed polylines handled by getClosedShapeFromEntity
+			const firstV = entity.vertices[0];
+			const lastV = entity.vertices[entity.vertices.length - 1];
+			return {
+				start: { x: firstV.x, y: firstV.y },
+				end: { x: lastV.x, y: lastV.y },
+			};
+		}
+		default:
+			return null;
+	}
+}
+
+/**
+ * Count assembled closed paths using greedy endpoint chaining.
+ * Mirrors DXFViewer3D's assembleClosedPaths algorithm.
+ */
+function countAssembledClosedPaths(segments: { start: Point2D; end: Point2D }[]): number {
+	const TOLERANCE = 0.5; // mm tolerance for endpoint matching (same as DXF3D)
+	const used = new Set<number>();
+	let count = 0;
+
+	for (let startIdx = 0; startIdx < segments.length; startIdx++) {
+		if (used.has(startIdx)) continue;
+
+		const chainIndices: number[] = [startIdx];
+		used.add(startIdx);
+
+		const chainStart = segments[startIdx].start;
+		let currentEnd = segments[startIdx].end;
+		let closed = false;
+
+		for (let iter = 0; iter < segments.length; iter++) {
+			// Check if loop is closed
+			if (chainIndices.length > 1 && dist2D(currentEnd, chainStart) < TOLERANCE) {
+				closed = true;
+				break;
+			}
+
+			// Find next matching segment
+			let found = false;
+			for (let i = 0; i < segments.length; i++) {
+				if (used.has(i)) continue;
+
+				// Try normal direction: segment.start matches currentEnd
+				if (dist2D(segments[i].start, currentEnd) < TOLERANCE) {
+					chainIndices.push(i);
+					used.add(i);
+					currentEnd = segments[i].end;
+					found = true;
+					break;
+				}
+
+				// Try reversed: segment.end matches currentEnd
+				if (dist2D(segments[i].end, currentEnd) < TOLERANCE) {
+					chainIndices.push(i);
+					used.add(i);
+					currentEnd = segments[i].start;
+					found = true;
+					break;
+				}
+			}
+
+			if (!found) break;
+		}
+
+		if (closed && chainIndices.length >= 2) {
+			count++;
+		} else {
+			// Couldn't close the chain - release segments back
+			for (const idx of chainIndices) {
+				used.delete(idx);
+			}
+		}
+	}
+
+	return count;
+}
+
+export function computeTotalPiercings(entities: any[], blocks?: Record<string, any>): PiercingsResult {
+	// Expand INSERT entities if blocks are provided
+	const expandedEntities = expandInserts(entities, blocks);
+
+	// Count single closed entities
+	let singleClosed = 0;
+	const chainableSegments: { start: Point2D; end: Point2D }[] = [];
+
+	for (const entity of expandedEntities) {
+		const closed = getClosedShapeFromEntity(entity);
+		if (closed) {
+			singleClosed++;
+		} else {
+			const endpoints = getChainableEndpoints(entity);
+			if (endpoints) {
+				chainableSegments.push(endpoints);
+			}
+		}
+	}
+
+	// Count assembled closed paths using greedy chaining (same algorithm as DXFViewer3D)
+	const assembledPaths = countAssembledClosedPaths(chainableSegments);
+
+	return { singleClosed, assembledPaths, total: singleClosed + assembledPaths };
+}
+
+/**
  * Compute total area of a DXF file by extracting contours using planar graph
  * face traversal. Returns the area of the largest (outer) contour.
  * Returns area in mm² (assuming DXF units are mm).

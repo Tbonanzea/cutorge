@@ -462,9 +462,7 @@ export default function DXFViewer3D({
 							outerShape.holes.push(holePath);
 						}
 
-						// Color: RED for assembled paths, GREEN for single closed entities
-						const outerColor = outerIsAssembled ? 0xff0000 : 0x00ff00;
-						const extruded = createExtrudedShape(outerShape, outerColor, 0);
+						const extruded = createExtrudedShape(outerShape, 0x333333, 0);
 						group.add(extruded);
 						renderedCount += allClosedShapes.length;
 
@@ -489,9 +487,7 @@ export default function DXFViewer3D({
 									islandShape.holes.push(holePath);
 								}
 							}
-							// Color: RED for assembled paths, GREEN for single closed entities
-							const islandColor = islandIsAssembled ? 0xff0000 : 0x00ff00;
-							const islandExtruded = createExtrudedShape(islandShape, islandColor, 0);
+							const islandExtruded = createExtrudedShape(islandShape, 0x333333, 0);
 							group.add(islandExtruded);
 						}
 					}

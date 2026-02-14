@@ -5,6 +5,7 @@
 
 import DxfParser from 'dxf-parser';
 import { validateDXF } from '@/lib/dxf-validation';
+import { computeTotalPiercings } from '@/lib/dxf-area';
 import type {
 	WorkerRequest,
 	ParseDxfSuccess,
@@ -38,6 +39,12 @@ self.onmessage = (event: MessageEvent<WorkerRequest>) => {
 			// Validate parsed DXF
 			const validation = validateDXF(parsed);
 
+			// Compute piercings breakdown (single closed entities + assembled paths)
+			const piercings = computeTotalPiercings(
+				parsed.entities || [],
+				parsed.blocks
+			);
+
 			// Send success response back to main thread
 			const successResponse: ParseDxfSuccess = {
 				type: 'PARSE_DXF_SUCCESS',
@@ -45,6 +52,7 @@ self.onmessage = (event: MessageEvent<WorkerRequest>) => {
 					requestId,
 					parsed,
 					validation,
+					piercings,
 				},
 			};
 			self.postMessage(successResponse);

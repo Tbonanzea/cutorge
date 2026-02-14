@@ -13,12 +13,19 @@ export interface ParseDxfRequest {
 	};
 }
 
+export interface PiercingsBreakdown {
+	singleClosed: number;
+	assembledPaths: number;
+	total: number;
+}
+
 export interface ParseDxfSuccess {
 	type: 'PARSE_DXF_SUCCESS';
 	payload: {
 		requestId: string;
 		parsed: any; // Parsed DXF object from dxf-parser
 		validation: DXFValidationResult;
+		piercings: PiercingsBreakdown;
 	};
 }
 
@@ -36,4 +43,5 @@ export type WorkerResponse = ParseDxfSuccess | ParseDxfError;
 export interface ParsedDxfResult {
 	parsed: any;
 	validation: DXFValidationResult;
+	piercings: PiercingsBreakdown;
 }

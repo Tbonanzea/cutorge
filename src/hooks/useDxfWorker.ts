@@ -42,10 +42,10 @@ export function useDxfWorker(): UseDxfWorkerReturn {
 				const { type, payload } = event.data;
 
 				if (type === 'PARSE_DXF_SUCCESS') {
-					const { requestId, parsed, validation } = payload;
+					const { requestId, parsed, validation, piercings } = payload;
 					const pending = pendingRequestsRef.current.get(requestId);
 					if (pending) {
-						pending.resolve({ parsed, validation });
+						pending.resolve({ parsed, validation, piercings });
 						pendingRequestsRef.current.delete(requestId);
 					}
 				} else if (type === 'PARSE_DXF_ERROR') {

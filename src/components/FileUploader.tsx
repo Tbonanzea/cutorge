@@ -109,7 +109,7 @@ function FileUploader() {
 
 				// Parse and validate DXF file in Web Worker
 				try {
-					const { parsed, validation } = await parseDxf(text);
+					const { parsed, validation, piercings } = await parseDxf(text);
 
 					setUploadProgress(
 						Math.round(((processed + 1) / filesToProcess.length) * 100)
@@ -141,7 +141,7 @@ function FileUploader() {
 							price: 0,
 						});
 					} else {
-						// File passed validation - cache parsed DXF
+						// File passed validation - cache parsed DXF and piercings
 						validFilesCount++;
 						const quotingFile = {
 							id: crypto.randomUUID(),
@@ -152,7 +152,8 @@ function FileUploader() {
 							_blobUrl: blobUrl,
 							_validationStatus: 'valid' as const,
 							_validationErrors: [],
-							_parsedDxf: parsed, // Cache parsed DXF to avoid re-parsing in viewers
+							_parsedDxf: parsed,
+							_piercings: piercings,
 						};
 						addItem({
 							file: quotingFile,
