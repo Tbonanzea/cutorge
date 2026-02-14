@@ -21,7 +21,7 @@ export function validateDXF(dxf: any): DXFValidationResult {
 	if (!dxf) {
 		return {
 			isValid: false,
-			errors: ['DXF file could not be parsed'],
+			errors: ['No se pudo procesar el archivo DXF'],
 		};
 	}
 
@@ -33,14 +33,29 @@ export function validateDXF(dxf: any): DXFValidationResult {
 	) {
 		return {
 			isValid: false,
-			errors: ['DXF file contains no valid entities'],
+			errors: ['El archivo DXF no contiene entidades válidas'],
 		};
 	}
 
+	// Entity type labels for user-friendly messages
+	const entityLabels: Record<string, string> = {
+		LINE: 'Línea',
+		LWPOLYLINE: 'Polilínea',
+		POLYLINE: 'Polilínea',
+		CIRCLE: 'Círculo',
+		ARC: 'Arco',
+		SPLINE: 'Curva',
+		ELLIPSE: 'Elipse',
+		POINT: 'Punto',
+	};
+
 	// Validate each entity
 	dxf.entities.forEach((entity: any, index: number) => {
+		const label = entityLabels[entity.type] || entity.type;
+		const prefix = `${label} #${index + 1}`;
+
 		if (!entity.type) {
-			errors.push(`Entity ${index + 1}: Missing entity type`);
+			errors.push(`Elemento #${index + 1}: tipo de entidad no reconocido`);
 			return;
 		}
 
@@ -48,18 +63,18 @@ export function validateDXF(dxf: any): DXFValidationResult {
 			case 'LINE':
 				if (!entity.vertices || entity.vertices.length !== 2) {
 					errors.push(
-						`Entity ${index + 1} (LINE): Incomplete - must have exactly 2 vertices`
+						`${prefix}: línea incompleta, faltan puntos`
 					);
 				} else {
 					entity.vertices.forEach((v: any, vIndex: number) => {
 						if (v.x === undefined || v.y === undefined) {
 							errors.push(
-								`Entity ${index + 1} (LINE): Vertex ${vIndex + 1} has invalid coordinates`
+								`${prefix}: coordenadas inválidas en el punto ${vIndex + 1}`
 							);
 						}
 						if (isNaN(v.x) || isNaN(v.y)) {
 							errors.push(
-								`Entity ${index + 1} (LINE): Vertex ${vIndex + 1} has invalid numeric values`
+								`${prefix}: valores numéricos inválidos en el punto ${vIndex + 1}`
 							);
 						}
 					});
@@ -70,18 +85,18 @@ export function validateDXF(dxf: any): DXFValidationResult {
 			case 'POLYLINE':
 				if (!entity.vertices || entity.vertices.length < 2) {
 					errors.push(
-						`Entity ${index + 1} (${entity.type}): Incomplete - must have at least 2 vertices`
+						`${prefix}: polilínea incompleta, necesita al menos 2 puntos`
 					);
 				} else {
 					entity.vertices.forEach((v: any, vIndex: number) => {
 						if (v.x === undefined || v.y === undefined) {
 							errors.push(
-								`Entity ${index + 1} (${entity.type}): Vertex ${vIndex + 1} has invalid coordinates`
+								`${prefix}: coordenadas inválidas en el punto ${vIndex + 1}`
 							);
 						}
 						if (isNaN(v.x) || isNaN(v.y)) {
 							errors.push(
-								`Entity ${index + 1} (${entity.type}): Vertex ${vIndex + 1} has invalid numeric values`
+								`${prefix}: valores numéricos inválidos en el punto ${vIndex + 1}`
 							);
 						}
 					});
@@ -94,14 +109,14 @@ export function validateDXF(dxf: any): DXFValidationResult {
 					entity.center.x === undefined ||
 					entity.center.y === undefined
 				) {
-					errors.push(`Entity ${index + 1} (CIRCLE): Invalid center`);
+					errors.push(`${prefix}: centro inválido`);
 				}
 				if (
 					!entity.radius ||
 					entity.radius <= 0 ||
 					isNaN(entity.radius)
 				) {
-					errors.push(`Entity ${index + 1} (CIRCLE): Invalid radius`);
+					errors.push(`${prefix}: radio inválido`);
 				}
 				break;
 
@@ -111,26 +126,26 @@ export function validateDXF(dxf: any): DXFValidationResult {
 					entity.center.x === undefined ||
 					entity.center.y === undefined
 				) {
-					errors.push(`Entity ${index + 1} (ARC): Invalid center`);
+					errors.push(`${prefix}: centro inválido`);
 				}
 				if (
 					!entity.radius ||
 					entity.radius <= 0 ||
 					isNaN(entity.radius)
 				) {
-					errors.push(`Entity ${index + 1} (ARC): Invalid radius`);
+					errors.push(`${prefix}: radio inválido`);
 				}
 				if (
 					entity.startAngle === undefined ||
 					entity.endAngle === undefined
 				) {
 					errors.push(
-						`Entity ${index + 1} (ARC): Invalid start or end angle`
+						`${prefix}: ángulo de inicio o fin inválido`
 					);
 				}
 				if (isNaN(entity.startAngle) || isNaN(entity.endAngle)) {
 					errors.push(
-						`Entity ${index + 1} (ARC): Invalid numeric angle values`
+						`${prefix}: valores de ángulo inválidos`
 					);
 				}
 				break;
@@ -138,7 +153,7 @@ export function validateDXF(dxf: any): DXFValidationResult {
 			case 'SPLINE':
 				if (!entity.controlPoints || entity.controlPoints.length < 2) {
 					errors.push(
-						`Entity ${index + 1} (SPLINE): Insufficient control points`
+						`${prefix}: puntos de control insuficientes`
 					);
 				}
 				break;
@@ -150,7 +165,7 @@ export function validateDXF(dxf: any): DXFValidationResult {
 					entity.axisRatio === undefined
 				) {
 					errors.push(
-						`Entity ${index + 1} (ELLIPSE): Missing required properties`
+						`${prefix}: faltan propiedades requeridas`
 					);
 				}
 				break;
@@ -161,13 +176,13 @@ export function validateDXF(dxf: any): DXFValidationResult {
 					entity.position.x === undefined ||
 					entity.position.y === undefined
 				) {
-					errors.push(`Entity ${index + 1} (POINT): Invalid position`);
+					errors.push(`${prefix}: posición inválida`);
 				}
 				break;
 
 			default:
 				// Unsupported types - just log to console
-				console.warn(`Unvalidated entity type: ${entity.type}`);
+				console.warn(`Tipo de entidad no validado: ${entity.type}`);
 		}
 	});
 
@@ -176,23 +191,21 @@ export function validateDXF(dxf: any): DXFValidationResult {
 		const extMin = dxf.header.$EXTMIN;
 		const extMax = dxf.header.$EXTMAX;
 
-		if (extMin.x >= extMax.x || extMin.y >= extMax.y) {
-			errors.push(
-				'DXF file has invalid extents - possible open or corrupt entities'
-			);
-		}
+		// Detect sentinel/default values (1e+20 / -1e+20) indicating extents were never computed
+		// This is common in many CAD exports and is NOT an error
+		const sentinelThreshold = 1e19;
+		const hasSentinelValues =
+			Math.abs(extMin.x) >= sentinelThreshold ||
+			Math.abs(extMin.y) >= sentinelThreshold ||
+			Math.abs(extMax.x) >= sentinelThreshold ||
+			Math.abs(extMax.y) >= sentinelThreshold;
 
-		// Check for extreme values indicating problems
-		const extremeValue = 1e19;
-		if (
-			Math.abs(extMin.x) > extremeValue ||
-			Math.abs(extMin.y) > extremeValue ||
-			Math.abs(extMax.x) > extremeValue ||
-			Math.abs(extMax.y) > extremeValue
-		) {
-			errors.push(
-				'DXF file contains entities with extreme coordinates - file may be corrupt'
-			);
+		if (!hasSentinelValues) {
+			if (extMin.x >= extMax.x || extMin.y >= extMax.y) {
+				errors.push(
+					'El archivo DXF tiene dimensiones inválidas: posibles entidades abiertas o corruptas'
+				);
+			}
 		}
 	}
 
@@ -229,7 +242,7 @@ export async function validateDXFFile(
 		return {
 			isValid: false,
 			errors: [
-				`Failed to parse DXF file: ${err instanceof Error ? err.message : 'Unknown error'}`,
+				`Error al procesar el archivo DXF: ${err instanceof Error ? err.message : 'Error desconocido'}`,
 			],
 		};
 	}

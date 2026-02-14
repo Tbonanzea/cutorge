@@ -34,6 +34,7 @@ interface DXFViewerToggleProps {
 	thickness?: number; // Material thickness in mm - required for 3D view
 	maxPackageWidth?: number; // Maximum package width in cm
 	maxPackageHeight?: number; // Maximum package height in cm
+	parsedDxf?: any; // Pre-parsed DXF object (bypasses fetch + parse)
 }
 
 type ViewMode = '2D' | '3D';
@@ -44,6 +45,7 @@ export default function DXFViewerToggle({
 	thickness,
 	maxPackageWidth,
 	maxPackageHeight,
+	parsedDxf,
 }: DXFViewerToggleProps) {
 	const [viewMode, setViewMode] = useState<ViewMode>('2D');
 
@@ -101,6 +103,7 @@ export default function DXFViewerToggle({
 						showControls={false}
 						maxPackageWidth={maxPackageWidth}
 						maxPackageHeight={maxPackageHeight}
+						parsedDxf={parsedDxf}
 					/>
 				) : (
 					<DXFViewer3D
@@ -110,6 +113,7 @@ export default function DXFViewerToggle({
 						thickness={thickness}
 						maxPackageWidth={maxPackageWidth}
 						maxPackageHeight={maxPackageHeight}
+						parsedDxf={parsedDxf}
 					/>
 				)}
 			</div>

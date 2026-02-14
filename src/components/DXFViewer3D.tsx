@@ -1,11 +1,16 @@
 'use client';
 
-import React, { useEffect, useRef, useState, useCallback } from 'react';
-import * as THREE from 'three';
-import { OrbitControls, Line2, LineGeometry, LineMaterial } from 'three-stdlib';
+import {
+	evaluateBSplineCurve,
+	getBSplineEndPoint,
+	getBSplineStartPoint,
+} from '@/lib/bspline';
+import { computeTotalDXFArea, getClosedShapeFromEntity } from '@/lib/dxf-area';
 import { validateDXF } from '@/lib/dxf-validation';
 import { createCustomGrid, createPackageBoundary } from '@/lib/three-grid';
-import { computeArea, getClosedShapeFromEntity, computeTotalDXFArea } from '@/lib/dxf-area';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import * as THREE from 'three';
+import { Line2, LineGeometry, LineMaterial, OrbitControls } from 'three-stdlib';
 
 interface DXFViewer3DProps {
 	dxfUrl?: string;
@@ -14,6 +19,7 @@ interface DXFViewer3DProps {
 	thickness?: number; // Material thickness in mm for 3D extrusion visualization
 	maxPackageWidth?: number; // Maximum package width in cm
 	maxPackageHeight?: number; // Maximum package height in cm
+	parsedDxf?: any; // Pre-parsed DXF object (bypasses fetch + parse)
 }
 
 const LINE_WIDTH = 2; // Line width in pixels
@@ -25,6 +31,7 @@ export default function DXFViewer3D({
 	thickness,
 	maxPackageWidth,
 	maxPackageHeight,
+	parsedDxf,
 }: DXFViewer3DProps) {
 	const containerRef = useRef<HTMLDivElement>(null);
 	const sceneRef = useRef<THREE.Scene | null>(null);
@@ -41,7 +48,11 @@ export default function DXFViewer3D({
 	const [validationErrors, setValidationErrors] = useState<string[]>([]);
 	const [selectedFile, setSelectedFile] = useState<File | null>(null);
 	const [entityCount, setEntityCount] = useState<number>(0);
-	const [dimensions, setDimensions] = useState<{ width: number; height: number; depth: number } | null>(null);
+	const [dimensions, setDimensions] = useState<{
+		width: number;
+		height: number;
+		depth: number;
+	} | null>(null);
 	const [area, setArea] = useState<number | null>(null);
 
 	useEffect(() => {
@@ -169,58 +180,73 @@ export default function DXFViewer3D({
 	}, []);
 
 	useEffect(() => {
-		if (dxfUrl && sceneRef.current) {
-			loadDXFFromPath(dxfUrl);
+		if (sceneRef.current) {
+			if (parsedDxf) {
+				// Use pre-parsed DXF directly
+				setIsLoading(true);
+				setError(null);
+				setValidationErrors([]);
+				renderParsedDXF(parsedDxf)
+					.catch((err) => {
+						console.error('Error rendering parsed DXF:', err);
+						setError(
+							'Error rendering DXF: ' + (err as Error).message,
+						);
+					})
+					.finally(() => {
+						setIsLoading(false);
+					});
+			} else if (dxfUrl) {
+				// Fallback: load from URL
+				loadDXFFromPath(dxfUrl);
+			}
 		}
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [dxfUrl, thickness, maxPackageWidth, maxPackageHeight]);
+	}, [dxfUrl, parsedDxf, thickness, maxPackageWidth, maxPackageHeight]);
 
-	const fitCameraToObject = useCallback((object: THREE.Group, pieceBounds?: { width: number; height: number }) => {
-		if (!cameraRef.current || !controlsRef.current || !containerRef.current)
-			return;
+	const fitCameraToObject = useCallback(
+		(
+			object: THREE.Group,
+			pieceBounds?: { width: number; height: number },
+		) => {
+			if (
+				!cameraRef.current ||
+				!controlsRef.current ||
+				!containerRef.current
+			)
+				return;
 
-		const box = new THREE.Box3().setFromObject(object);
-		if (box.isEmpty()) return;
+			const box = new THREE.Box3().setFromObject(object);
+			if (box.isEmpty()) return;
 
-		const size = box.getSize(new THREE.Vector3());
+			const size = box.getSize(new THREE.Vector3());
 
-		// Store dimensions (DXF units are typically mm)
-		setDimensions({
-			width: Math.abs(size.x),
-			height: Math.abs(size.y),
-			depth: Math.abs(size.z),
-		});
+			// Store dimensions (DXF units are typically mm)
+			setDimensions({
+				width: Math.abs(size.x),
+				height: Math.abs(size.y),
+				depth: Math.abs(size.z),
+			});
 
-		// If package boundary exists, include it in the zoom calculation
-		let viewWidth = size.x;
-		let viewHeight = size.y;
+			// Zoom based on piece dimensions only (ignore package boundary)
+			const maxDim = Math.max(size.x, size.y, size.z);
+			const fov = cameraRef.current.fov * (Math.PI / 180);
+			const distance = (maxDim / 2 / Math.tan(fov / 2)) * 1.6; // tight fit
 
-		if (maxPackageWidth && maxPackageHeight) {
-			// Convert cm to mm
-			const packageWidthMm = maxPackageWidth * 10;
-			const packageHeightMm = maxPackageHeight * 10;
-			viewWidth = Math.max(viewWidth, packageWidthMm);
-			viewHeight = Math.max(viewHeight, packageHeightMm);
-		}
+			// Position camera at an angle for 3D view, targeting origin
+			const angle = Math.PI / 4; // 45 degrees
+			cameraRef.current.position.set(
+				distance * Math.sin(angle) * 0.5,
+				-distance * Math.cos(angle) * 0.5,
+				distance * 0.7,
+			);
+			cameraRef.current.updateProjectionMatrix();
 
-		// Calculate the distance needed to fit the object in view
-		const maxDim = Math.max(viewWidth, viewHeight, size.z);
-		const fov = cameraRef.current.fov * (Math.PI / 180);
-		const distance = (maxDim / 2) / Math.tan(fov / 2) * 1.5; // 1.5 for padding
-
-		// Position camera at an angle for 3D view, targeting origin
-		const angle = Math.PI / 4; // 45 degrees
-		cameraRef.current.position.set(
-			distance * Math.sin(angle) * 0.5,
-			-distance * Math.cos(angle) * 0.5,
-			distance * 0.7
-		);
-		cameraRef.current.updateProjectionMatrix();
-
-		controlsRef.current.target.set(0, 0, 0); // Target origin
-		controlsRef.current.update();
-	}, [maxPackageWidth, maxPackageHeight]);
-
+			controlsRef.current.target.set(0, 0, 0); // Target origin
+			controlsRef.current.update();
+		},
+		[maxPackageWidth, maxPackageHeight],
+	);
 
 	const loadDXFFromPath = async (path: string) => {
 		if (!sceneRef.current) return;
@@ -234,7 +260,9 @@ export default function DXFViewer3D({
 
 			const response = await fetch(path);
 			if (!response.ok) {
-				throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+				throw new Error(
+					`HTTP ${response.status}: ${response.statusText}`,
+				);
 			}
 
 			const dxfString = await response.text();
@@ -244,6 +272,35 @@ export default function DXFViewer3D({
 			setError('Error loading DXF file: ' + (err as Error).message);
 		} finally {
 			setIsLoading(false);
+		}
+	};
+
+	// Render pre-parsed DXF (bypasses fetch + parse)
+	const renderParsedDXF = async (dxf: any) => {
+		if (!sceneRef.current) return;
+
+		try {
+			console.log('Rendering pre-parsed DXF:', dxf);
+
+			if (!dxf) {
+				throw new Error('Invalid DXF object');
+			}
+
+			// Validate the DXF file - this blocks on errors
+			const validationResult = validateDXF(dxf);
+			if (!validationResult.isValid) {
+				setValidationErrors(validationResult.errors);
+				const errorMessage = validationResult.errors.join('\n• ');
+				throw new Error(`Invalid DXF file:\n• ${errorMessage}`);
+			}
+
+			setValidationErrors([]);
+
+			// Continue with rendering (same as parseDXF below)
+			await renderDXFToScene(dxf);
+		} catch (err) {
+			console.error('Error rendering parsed DXF:', err);
+			throw err;
 		}
 	};
 
@@ -271,191 +328,376 @@ export default function DXFViewer3D({
 
 			setValidationErrors([]);
 
-			// Dispose previous object and its resources
-			if (dxfObjectRef.current) {
-				disposeObject(dxfObjectRef.current);
-				sceneRef.current.remove(dxfObjectRef.current);
-			}
-
-			const group = new THREE.Group();
-			let renderedCount = 0;
-
-			// Parse entities
-			if (dxf.entities && Array.isArray(dxf.entities)) {
-				if (hasThickness) {
-					// Collect single-entity closed shapes and chainable segments
-					const singleClosedShapes: { shape: THREE.Shape; area: number }[] = [];
-					const chainableSegments: {
-						start: { x: number; y: number };
-						end: { x: number; y: number };
-						entity: any;
-					}[] = [];
-					const remainingEntities: any[] = [];
-
-					dxf.entities.forEach((entity: any) => {
-						const closed = getClosedShapeFromEntity(entity);
-						if (closed) {
-							singleClosedShapes.push(closed);
-						} else {
-							const seg = getSegmentEndpoints(entity);
-							if (seg) {
-								chainableSegments.push({ ...seg, entity });
-							} else {
-								remainingEntities.push(entity);
-							}
-						}
-					});
-
-					// Assemble chainable segments into closed loops
-					const assembledShapes = assembleClosedPaths(chainableSegments);
-
-					// Combine all closed shapes
-					const allClosedShapes = [
-						...assembledShapes.map(s => ({ shape: s.shape, area: s.area })),
-						...singleClosedShapes,
-					];
-
-					console.log('[DXF3D] Single closed entities:', singleClosedShapes.length,
-						'| Assembled paths:', assembledShapes.length,
-						'(from', chainableSegments.length, 'segments)',
-						'| Remaining:', remainingEntities.length);
-
-					if (allClosedShapes.length > 0) {
-						// Sort by area descending - largest is the outer boundary
-						allClosedShapes.sort((a, b) => b.area - a.area);
-
-						const outerShape = allClosedShapes[0].shape;
-
-						// Add all smaller closed shapes as holes
-						for (let i = 1; i < allClosedShapes.length; i++) {
-							const holePoints = allClosedShapes[i].shape.getPoints(64);
-							// Ensure hole is clockwise (opposite of outer)
-							const isCW = THREE.ShapeUtils.isClockWise(holePoints);
-							const orderedPoints = isCW ? holePoints : [...holePoints].reverse();
-							const holePath = new THREE.Path();
-							holePath.moveTo(orderedPoints[0].x, orderedPoints[0].y);
-							for (let j = 1; j < orderedPoints.length; j++) {
-								holePath.lineTo(orderedPoints[j].x, orderedPoints[j].y);
-							}
-							holePath.closePath();
-							outerShape.holes.push(holePath);
-						}
-
-						const extruded = createExtrudedShape(outerShape, 0x333333, 0);
-						group.add(extruded);
-						renderedCount += allClosedShapes.length;
-					}
-
-					// Render any remaining entities that couldn't be assembled
-					remainingEntities.forEach((entity: any) => {
-						try {
-							const mesh = createEntityMesh(entity);
-							if (mesh) {
-								group.add(mesh);
-								renderedCount++;
-							}
-						} catch (err) {
-							console.warn('Error processing entity:', entity.type, err);
-						}
-					});
-
-					// Also render unused segments (not part of any closed loop)
-					assembledShapes.forEach(s => {
-						s.unusedSegments.forEach((entity: any) => {
-							try {
-								const mesh = createEntityMesh(entity);
-								if (mesh) {
-									group.add(mesh);
-									renderedCount++;
-								}
-							} catch (err) {
-								console.warn('Error processing entity:', entity.type, err);
-							}
-						});
-					});
-				} else {
-					// Standard approach: process each entity individually
-					dxf.entities.forEach((entity: any) => {
-						try {
-							const mesh = createEntityMesh(entity);
-							if (mesh) {
-								group.add(mesh);
-								renderedCount++;
-							}
-						} catch (err) {
-							console.warn('Error processing entity:', entity.type, err);
-						}
-					});
-				}
-			}
-
-			if (group.children.length === 0) {
-				throw new Error('No valid entities found in DXF file');
-			}
-
-			// Center the piece at the origin
-			const box = new THREE.Box3().setFromObject(group);
-			const center = box.getCenter(new THREE.Vector3());
-			group.position.set(-center.x, -center.y, -center.z);
-
-			// Get piece dimensions for grid
-			const size = box.getSize(new THREE.Vector3());
-			const pieceBounds = {
-				width: Math.abs(size.x),
-				height: Math.abs(size.y),
-			};
-
-			// Dispose previous grid and boundary
-			if (gridRef.current) {
-				disposeObject(gridRef.current);
-				sceneRef.current.remove(gridRef.current);
-				gridRef.current = null;
-			}
-			if (boundaryRef.current) {
-				boundaryRef.current.geometry?.dispose();
-				(boundaryRef.current.material as LineMaterial)?.dispose();
-				sceneRef.current.remove(boundaryRef.current);
-				boundaryRef.current = null;
-			}
-
-			// Create dynamic grid based on piece size
-			const customGrid = createCustomGrid({
-				pieceBounds,
-				cellSize: 10, // 10mm = 1cm
-				paddingMultiplier: 2.0,
-				minExtension: 300, // 30cm minimum
-			});
-			gridRef.current = customGrid;
-			sceneRef.current.add(customGrid);
-
-			// Create package boundary if dimensions are provided (at z=0, base of extruded piece)
-			if (maxPackageWidth && maxPackageHeight) {
-				const boundary = createPackageBoundary({
-					width: maxPackageWidth * 10, // Convert cm to mm
-					height: maxPackageHeight * 10,
-					resolution: resolutionRef.current,
-				});
-				boundaryRef.current = boundary;
-				sceneRef.current.add(boundary);
-			}
-
-			dxfObjectRef.current = group;
-			sceneRef.current.add(group);
-			setEntityCount(renderedCount);
-
-			// Compute total area of closed shapes
-			if (dxf.entities) {
-				const totalArea = computeTotalDXFArea(dxf.entities);
-				setArea(totalArea > 0 ? totalArea : null);
-			}
-
-			fitCameraToObject(group, pieceBounds);
-
-			console.log('DXF rendered with', renderedCount, 'entities');
+			await renderDXFToScene(dxf);
 		} catch (err) {
 			console.error('Error parsing DXF:', err);
 			throw err;
 		}
+	};
+
+	// Extract rendering logic into separate function
+	const renderDXFToScene = async (dxf: any) => {
+		if (!sceneRef.current) return;
+
+		// Dispose previous object and its resources
+		if (dxfObjectRef.current) {
+			disposeObject(dxfObjectRef.current);
+			sceneRef.current.remove(dxfObjectRef.current);
+		}
+
+		const group = new THREE.Group();
+		let renderedCount = 0;
+
+		// Parse entities
+		if (dxf.entities && Array.isArray(dxf.entities)) {
+			// Log closed entities analysis
+			let closedCount = 0;
+			const closedByType: Record<string, number> = {};
+			dxf.entities.forEach((entity: any) => {
+				const closed = getClosedShapeFromEntity(entity);
+				if (closed) {
+					closedCount++;
+					closedByType[entity.type] =
+						(closedByType[entity.type] || 0) + 1;
+				}
+			});
+			console.log(
+				`[DXF3D] Total entities: ${dxf.entities.length} | Closed entities: ${closedCount}`,
+				closedByType,
+			);
+
+			if (hasThickness) {
+				// Collect single-entity closed shapes and chainable segments
+				const singleClosedShapes: {
+					shape: THREE.Shape;
+					area: number;
+					isAssembled: false;
+				}[] = [];
+				const chainableSegments: {
+					start: { x: number; y: number };
+					end: { x: number; y: number };
+					entity: any;
+				}[] = [];
+				const remainingEntities: any[] = [];
+
+				dxf.entities.forEach((entity: any) => {
+					const closed = getClosedShapeFromEntity(entity);
+					if (closed) {
+						singleClosedShapes.push({
+							...closed,
+							isAssembled: false,
+						});
+					} else {
+						const seg = getSegmentEndpoints(entity);
+						if (seg) {
+							chainableSegments.push({ ...seg, entity });
+						} else {
+							remainingEntities.push(entity);
+						}
+					}
+				});
+
+				// Assemble chainable segments into closed loops
+				const assembledShapes = assembleClosedPaths(chainableSegments);
+
+				// Combine all closed shapes with metadata
+				const allClosedShapes = [
+					...assembledShapes.map((s) => ({
+						shape: s.shape,
+						area: s.area,
+						isAssembled: true,
+					})),
+					...singleClosedShapes,
+				];
+
+				console.log(
+					'[DXF3D] Single closed entities:',
+					singleClosedShapes.length,
+					'| Assembled paths:',
+					assembledShapes.length,
+					'(from',
+					chainableSegments.length,
+					'segments)',
+					'| Remaining:',
+					remainingEntities.length,
+				);
+
+				if (allClosedShapes.length > 0) {
+					// Sort by area descending - largest is the outer boundary
+					allClosedShapes.sort((a, b) => b.area - a.area);
+
+					// Point-in-polygon test for containment
+					const pointInShape = (
+						px: number,
+						py: number,
+						shapePoints: THREE.Vector2[],
+					) => {
+						let inside = false;
+						for (
+							let i = 0, j = shapePoints.length - 1;
+							i < shapePoints.length;
+							j = i++
+						) {
+							const xi = shapePoints[i].x,
+								yi = shapePoints[i].y;
+							const xj = shapePoints[j].x,
+								yj = shapePoints[j].y;
+							if (
+								yi > py !== yj > py &&
+								px < ((xj - xi) * (py - yi)) / (yj - yi) + xi
+							) {
+								inside = !inside;
+							}
+						}
+						return inside;
+					};
+
+					// Compute centroid and points for each shape
+					const shapeData = allClosedShapes.map((s) => {
+						const pts = s.shape.getPoints(64);
+						let cx = 0,
+							cy = 0;
+						for (const p of pts) {
+							cx += p.x;
+							cy += p.y;
+						}
+						cx /= pts.length;
+						cy /= pts.length;
+						return {
+							...s,
+							pts,
+							cx,
+							cy,
+							isAssembled: s.isAssembled,
+						};
+					});
+
+					// Determine nesting depth using even-odd rule
+					// Depth 0 = outer boundary (material), depth 1 = hole, depth 2 = island, etc.
+					const depths = shapeData.map((s, i) => {
+						let depth = 0;
+						for (let j = 0; j < shapeData.length; j++) {
+							if (j === i) continue;
+							// Only count larger shapes as potential parents
+							if (shapeData[j].area <= s.area) continue;
+							if (pointInShape(s.cx, s.cy, shapeData[j].pts)) {
+								depth++;
+							}
+						}
+						return depth;
+					});
+
+					// Depth 0: outer boundary (material)
+					// Depth 1: holes in outer boundary
+					// Depth 2: islands inside holes (material again)
+					// Depth 3: holes inside islands, etc.
+
+					// Build the outer shape with depth-1 holes
+					const outerShape = shapeData[0].shape;
+					const _outerIsAssembled = shapeData[0].isAssembled;
+					for (let i = 1; i < shapeData.length; i++) {
+						if (depths[i] !== 1) continue; // Only direct holes
+						const holePoints = shapeData[i].pts;
+						const isCW = THREE.ShapeUtils.isClockWise(holePoints);
+						const orderedPoints = isCW
+							? holePoints
+							: [...holePoints].reverse();
+						const holePath = new THREE.Path();
+						holePath.moveTo(orderedPoints[0].x, orderedPoints[0].y);
+						for (let j = 1; j < orderedPoints.length; j++) {
+							holePath.lineTo(
+								orderedPoints[j].x,
+								orderedPoints[j].y,
+							);
+						}
+						holePath.closePath();
+						outerShape.holes.push(holePath);
+					}
+
+					const extruded = createExtrudedShape(
+						outerShape,
+						0x333333,
+						0,
+					);
+					group.add(extruded);
+					renderedCount += allClosedShapes.length;
+
+					// Extrude islands (depth 2+) as separate filled shapes
+					for (let i = 1; i < shapeData.length; i++) {
+						if (depths[i] < 2 || depths[i] % 2 !== 0) continue; // Even depth = material
+						const islandShape = shapeData[i].shape;
+						const _islandIsAssembled = shapeData[i].isAssembled;
+						// Add any depth+1 shapes inside this island as holes
+						for (let j = 0; j < shapeData.length; j++) {
+							if (j === i || depths[j] !== depths[i] + 1)
+								continue;
+							if (
+								pointInShape(
+									shapeData[j].cx,
+									shapeData[j].cy,
+									shapeData[i].pts,
+								)
+							) {
+								const holePoints = shapeData[j].pts;
+								const isCW =
+									THREE.ShapeUtils.isClockWise(holePoints);
+								const orderedPoints = isCW
+									? holePoints
+									: [...holePoints].reverse();
+								const holePath = new THREE.Path();
+								holePath.moveTo(
+									orderedPoints[0].x,
+									orderedPoints[0].y,
+								);
+								for (let k = 1; k < orderedPoints.length; k++) {
+									holePath.lineTo(
+										orderedPoints[k].x,
+										orderedPoints[k].y,
+									);
+								}
+								holePath.closePath();
+								islandShape.holes.push(holePath);
+							}
+						}
+						const islandExtruded = createExtrudedShape(
+							islandShape,
+							0x333333,
+							0,
+						);
+						group.add(islandExtruded);
+					}
+				}
+
+				// Render any remaining entities that couldn't be assembled
+				remainingEntities.forEach((entity: any) => {
+					try {
+						const mesh = createEntityMesh(entity);
+						if (mesh) {
+							group.add(mesh);
+							renderedCount++;
+						}
+					} catch (err) {
+						console.warn(
+							'Error processing entity:',
+							entity.type,
+							err,
+						);
+					}
+				});
+
+				// Also render unused segments (not part of any closed loop)
+				assembledShapes.forEach((s) => {
+					s.unusedSegments.forEach((entity: any) => {
+						try {
+							const mesh = createEntityMesh(entity);
+							if (mesh) {
+								group.add(mesh);
+								renderedCount++;
+							}
+						} catch (err) {
+							console.warn(
+								'Error processing entity:',
+								entity.type,
+								err,
+							);
+						}
+					});
+				});
+			} else {
+				// Standard approach: process each entity individually
+				dxf.entities.forEach((entity: any) => {
+					try {
+						const mesh = createEntityMesh(entity);
+						if (mesh) {
+							group.add(mesh);
+							renderedCount++;
+						}
+					} catch (err) {
+						console.warn(
+							'Error processing entity:',
+							entity.type,
+							err,
+						);
+					}
+				});
+			}
+		}
+
+		if (group.children.length === 0) {
+			throw new Error('No valid entities found in DXF file');
+		}
+
+		// Center the piece at the origin
+		const box = new THREE.Box3().setFromObject(group);
+		const center = box.getCenter(new THREE.Vector3());
+		group.position.set(-center.x, -center.y, -center.z);
+
+		// Get piece dimensions for grid
+		const size = box.getSize(new THREE.Vector3());
+		const pieceBounds = {
+			width: Math.abs(size.x),
+			height: Math.abs(size.y),
+		};
+
+		// Dispose previous grid and boundary
+		if (gridRef.current) {
+			disposeObject(gridRef.current);
+			sceneRef.current.remove(gridRef.current);
+			gridRef.current = null;
+		}
+		if (boundaryRef.current) {
+			boundaryRef.current.geometry?.dispose();
+			(boundaryRef.current.material as LineMaterial)?.dispose();
+			sceneRef.current.remove(boundaryRef.current);
+			boundaryRef.current = null;
+		}
+
+		// Create dynamic grid based on piece size
+		const customGrid = createCustomGrid({
+			pieceBounds,
+			cellSize: 10, // 10mm = 1cm
+			paddingMultiplier: 2.0,
+			minExtension: 300, // 30cm minimum
+		});
+		gridRef.current = customGrid;
+		sceneRef.current.add(customGrid);
+
+		// Create package boundary if dimensions are provided (at z=0, base of extruded piece)
+		// Auto-align: swap package dimensions so its longest side matches the piece's longest side
+		if (maxPackageWidth && maxPackageHeight) {
+			let pkgW = maxPackageWidth * 10; // Convert cm to mm
+			let pkgH = maxPackageHeight * 10;
+
+			const pieceIsWiderThanTall =
+				pieceBounds.width >= pieceBounds.height;
+			const packageIsWiderThanTall = pkgW >= pkgH;
+
+			if (pieceIsWiderThanTall !== packageIsWiderThanTall) {
+				[pkgW, pkgH] = [pkgH, pkgW];
+			}
+
+			const boundary = createPackageBoundary({
+				width: pkgW,
+				height: pkgH,
+				resolution: resolutionRef.current,
+			});
+			boundaryRef.current = boundary;
+			sceneRef.current.add(boundary);
+		}
+
+		dxfObjectRef.current = group;
+		sceneRef.current.add(group);
+		setEntityCount(renderedCount);
+
+		// Compute total area using contour chaining
+		if (dxf.entities) {
+			const totalArea = computeTotalDXFArea(dxf.entities, dxf.blocks);
+			setArea(totalArea > 0 ? totalArea : null);
+		}
+
+		fitCameraToObject(group, pieceBounds);
+
+		console.log('DXF rendered with', renderedCount, 'entities');
 	};
 
 	// Properly dispose Three.js objects to prevent memory leaks
@@ -486,7 +728,10 @@ export default function DXFViewer3D({
 		});
 	};
 
-	const createLine2FromPoints = (points: THREE.Vector3[], color: number): Line2 => {
+	const createLine2FromPoints = (
+		points: THREE.Vector3[],
+		color: number,
+	): Line2 => {
 		const geometry = new LineGeometry();
 		const positions: number[] = [];
 		points.forEach((p) => {
@@ -505,7 +750,11 @@ export default function DXFViewer3D({
 	};
 
 	// Create an extruded 3D mesh from a THREE.Shape
-	const createExtrudedShape = (shape: THREE.Shape, color: number, baseZ: number): THREE.Group => {
+	const createExtrudedShape = (
+		shape: THREE.Shape,
+		color: number,
+		baseZ: number,
+	): THREE.Group => {
 		const group = new THREE.Group();
 
 		const extrudeSettings: THREE.ExtrudeGeometryOptions = {
@@ -526,36 +775,76 @@ export default function DXFViewer3D({
 		mesh.position.z = baseZ;
 		group.add(mesh);
 
-		// Edge wireframe for clarity
-		const edges = new THREE.EdgesGeometry(geometry, 15);
-		const edgeMaterial = new THREE.LineBasicMaterial({ color: color || 0x333333 });
-		const edgeLines = new THREE.LineSegments(edges, edgeMaterial);
-		edgeLines.position.z = baseZ;
-		group.add(edgeLines);
+		// Outline edges from shape and holes (batched into single geometry)
+		const edgeVerts: number[] = [];
+		const addOutlineAtZ = (z: number) => {
+			const outlinePoints = shape.getPoints(64);
+			for (let i = 0; i < outlinePoints.length; i++) {
+				const a = outlinePoints[i];
+				const b = outlinePoints[(i + 1) % outlinePoints.length];
+				edgeVerts.push(a.x, a.y, z, b.x, b.y, z);
+			}
+			for (const hole of shape.holes) {
+				const holePoints = hole.getPoints(64);
+				for (let i = 0; i < holePoints.length; i++) {
+					const a = holePoints[i];
+					const b = holePoints[(i + 1) % holePoints.length];
+					edgeVerts.push(a.x, a.y, z, b.x, b.y, z);
+				}
+			}
+		};
+		addOutlineAtZ(baseZ);
+		addOutlineAtZ(baseZ + thickness!);
+		if (edgeVerts.length > 0) {
+			const edgeGeo = new THREE.BufferGeometry();
+			edgeGeo.setAttribute(
+				'position',
+				new THREE.Float32BufferAttribute(edgeVerts, 3),
+			);
+			const edgeMaterial = new THREE.LineBasicMaterial({
+				color: color || 0x333333,
+			});
+			const edgeLines = new THREE.LineSegments(edgeGeo, edgeMaterial);
+			edgeLines.position.z = 0;
+			group.add(edgeLines);
+		}
 
 		return group;
 	};
 
 	// Create lines at both z=0 and z=thickness with vertical connections
-	const createThickLines = (points: THREE.Vector3[], color: number): THREE.Group => {
+	const createThickLines = (
+		points: THREE.Vector3[],
+		color: number,
+	): THREE.Group => {
 		const group = new THREE.Group();
 		// Bottom edge
 		group.add(createLine2FromPoints(points, color));
 		// Top edge
 		const topPoints = points.map(
-			(p) => new THREE.Vector3(p.x, p.y, p.z + thickness!)
+			(p) => new THREE.Vector3(p.x, p.y, p.z + thickness!),
 		);
 		group.add(createLine2FromPoints(topPoints, color));
 		// Vertical edges at start and end
 		group.add(createLine2FromPoints([points[0], topPoints[0]], color));
-		group.add(createLine2FromPoints([points[points.length - 1], topPoints[topPoints.length - 1]], color));
+		group.add(
+			createLine2FromPoints(
+				[points[points.length - 1], topPoints[topPoints.length - 1]],
+				color,
+			),
+		);
 		return group;
 	};
 
 	const hasThickness = thickness !== undefined && thickness > 0;
 
 	// Extract start/end endpoints from a LINE or ARC entity for path assembly
-	const getSegmentEndpoints = (entity: any): { start: { x: number; y: number }; end: { x: number; y: number } } | null => {
+	const getSegmentEndpoints = (
+		entity: any,
+	): {
+		start: { x: number; y: number };
+		end: { x: number; y: number };
+	} | null => {
 		switch (entity.type) {
 			case 'LINE': {
 				if (!entity.vertices || entity.vertices.length < 2) return null;
@@ -572,8 +861,60 @@ export default function DXFViewer3D({
 				const sa = entity.startAngle;
 				const ea = entity.endAngle;
 				return {
-					start: { x: cx + r * Math.cos(sa), y: cy + r * Math.sin(sa) },
+					start: {
+						x: cx + r * Math.cos(sa),
+						y: cy + r * Math.sin(sa),
+					},
 					end: { x: cx + r * Math.cos(ea), y: cy + r * Math.sin(ea) },
+				};
+			}
+			case 'SPLINE': {
+				if (!entity.controlPoints || entity.controlPoints.length < 2)
+					return null;
+				if (entity.closed) return null; // Closed splines handled separately
+				if (
+					entity.knotValues &&
+					entity.knotValues.length > 0 &&
+					entity.degreeOfSplineCurve
+				) {
+					const cp = entity.controlPoints.map((p: any) => ({
+						x: p.x,
+						y: p.y,
+						z: p.z || 0,
+					}));
+					const startPt = getBSplineStartPoint(
+						entity.degreeOfSplineCurve,
+						cp,
+						entity.knotValues,
+					);
+					const endPt = getBSplineEndPoint(
+						entity.degreeOfSplineCurve,
+						cp,
+						entity.knotValues,
+					);
+					return {
+						start: { x: startPt.x, y: startPt.y },
+						end: { x: endPt.x, y: endPt.y },
+					};
+				}
+				// Fallback to first/last control points
+				const first = entity.controlPoints[0];
+				const last =
+					entity.controlPoints[entity.controlPoints.length - 1];
+				return {
+					start: { x: first.x, y: first.y },
+					end: { x: last.x, y: last.y },
+				};
+			}
+			case 'LWPOLYLINE':
+			case 'POLYLINE': {
+				if (!entity.vertices || entity.vertices.length < 2) return null;
+				if (entity.shape) return null; // Closed polylines handled separately
+				const firstV = entity.vertices[0];
+				const lastV = entity.vertices[entity.vertices.length - 1];
+				return {
+					start: { x: firstV.x, y: firstV.y },
+					end: { x: lastV.x, y: lastV.y },
 				};
 			}
 			default:
@@ -582,7 +923,10 @@ export default function DXFViewer3D({
 	};
 
 	// Generate intermediate points along an ARC for use in Shape/Path
-	const getArcPoints = (entity: any, reverse: boolean): { x: number; y: number }[] => {
+	const getArcPoints = (
+		entity: any,
+		reverse: boolean,
+	): { x: number; y: number }[] => {
 		const cx = entity.center.x;
 		const cy = entity.center.y;
 		const r = entity.radius;
@@ -599,27 +943,79 @@ export default function DXFViewer3D({
 			for (let i = segments - 1; i >= 0; i--) {
 				const t = i / segments;
 				const angle = sa + t * sweep;
-				points.push({ x: cx + r * Math.cos(angle), y: cy + r * Math.sin(angle) });
+				points.push({
+					x: cx + r * Math.cos(angle),
+					y: cy + r * Math.sin(angle),
+				});
 			}
 		} else {
 			// Go from startAngle to endAngle (skip first point, it's the segment start)
 			for (let i = 1; i <= segments; i++) {
 				const t = i / segments;
 				const angle = sa + t * sweep;
-				points.push({ x: cx + r * Math.cos(angle), y: cy + r * Math.sin(angle) });
+				points.push({
+					x: cx + r * Math.cos(angle),
+					y: cy + r * Math.sin(angle),
+				});
 			}
 		}
 		return points;
 	};
 
+	// Generate intermediate points along a SPLINE for use in Shape/Path
+	const getSplinePoints = (
+		entity: any,
+		reverse: boolean,
+	): { x: number; y: number }[] => {
+		let pts: { x: number; y: number }[];
+		if (
+			entity.knotValues &&
+			entity.knotValues.length > 0 &&
+			entity.degreeOfSplineCurve
+		) {
+			const cp = entity.controlPoints.map((p: any) => ({
+				x: p.x,
+				y: p.y,
+				z: p.z || 0,
+			}));
+			const evaluated = evaluateBSplineCurve(
+				entity.degreeOfSplineCurve,
+				cp,
+				entity.knotValues,
+			);
+			pts = evaluated.map((p) => ({ x: p.x, y: p.y }));
+		} else {
+			pts = entity.controlPoints.map((p: any) => ({ x: p.x, y: p.y }));
+		}
+		if (reverse) {
+			pts = pts.slice().reverse();
+			// Skip first point (it's the segment start, already added)
+			return pts.slice(1);
+		}
+		// Skip first point (it's the segment start, already added)
+		return pts.slice(1);
+	};
+
 	// Assemble open LINE/ARC segments into closed paths by chaining endpoints
-	const assembleClosedPaths = (segments: { start: { x: number; y: number }; end: { x: number; y: number }; entity: any }[]) => {
+	const assembleClosedPaths = (
+		segments: {
+			start: { x: number; y: number };
+			end: { x: number; y: number };
+			entity: any;
+		}[],
+	) => {
 		const TOLERANCE = 0.5; // mm tolerance for endpoint matching
 		const used = new Set<number>();
-		const results: { shape: THREE.Shape; area: number; unusedSegments: any[] }[] = [];
+		const results: {
+			shape: THREE.Shape;
+			area: number;
+			unusedSegments: any[];
+		}[] = [];
 
-		const dist = (a: { x: number; y: number }, b: { x: number; y: number }) =>
-			Math.sqrt((a.x - b.x) ** 2 + (a.y - b.y) ** 2);
+		const dist = (
+			a: { x: number; y: number },
+			b: { x: number; y: number },
+		) => Math.sqrt((a.x - b.x) ** 2 + (a.y - b.y) ** 2);
 
 		// Try to build closed chains
 		for (let startIdx = 0; startIdx < segments.length; startIdx++) {
@@ -635,7 +1031,10 @@ export default function DXFViewer3D({
 
 			for (let iter = 0; iter < segments.length; iter++) {
 				// Check if loop is closed
-				if (chain.length > 1 && dist(currentEnd, chainStart) < TOLERANCE) {
+				if (
+					chain.length > 1 &&
+					dist(currentEnd, chainStart) < TOLERANCE
+				) {
 					closed = true;
 					break;
 				}
@@ -647,7 +1046,10 @@ export default function DXFViewer3D({
 
 					// Try normal direction: segment.start matches currentEnd
 					if (dist(segments[i].start, currentEnd) < TOLERANCE) {
-						chain.push({ entity: segments[i].entity, reversed: false });
+						chain.push({
+							entity: segments[i].entity,
+							reversed: false,
+						});
 						used.add(i);
 						currentEnd = segments[i].end;
 						found = true;
@@ -656,7 +1058,10 @@ export default function DXFViewer3D({
 
 					// Try reversed: segment.end matches currentEnd
 					if (dist(segments[i].end, currentEnd) < TOLERANCE) {
-						chain.push({ entity: segments[i].entity, reversed: true });
+						chain.push({
+							entity: segments[i].entity,
+							reversed: true,
+						});
 						used.add(i);
 						currentEnd = segments[i].start;
 						found = true;
@@ -684,6 +1089,23 @@ export default function DXFViewer3D({
 						for (const p of arcPts) {
 							shape.lineTo(p.x, p.y);
 						}
+					} else if (e.type === 'SPLINE') {
+						const splinePts = getSplinePoints(e, seg.reversed);
+						for (const p of splinePts) {
+							shape.lineTo(p.x, p.y);
+						}
+					} else if (
+						e.type === 'LWPOLYLINE' ||
+						e.type === 'POLYLINE'
+					) {
+						const verts = e.vertices as { x: number; y: number }[];
+						const ordered = seg.reversed
+							? [...verts].reverse()
+							: verts;
+						// Skip first point (it's the segment start, already in the shape)
+						for (let vi = 1; vi < ordered.length; vi++) {
+							shape.lineTo(ordered[vi].x, ordered[vi].y);
+						}
 					}
 				}
 				shape.closePath();
@@ -708,13 +1130,17 @@ export default function DXFViewer3D({
 						fixedShape.lineTo(reversed[k].x, reversed[k].y);
 					}
 					fixedShape.closePath();
-					results.push({ shape: fixedShape, area, unusedSegments: [] });
+					results.push({
+						shape: fixedShape,
+						area,
+						unusedSegments: [],
+					});
 				} else {
 					results.push({ shape, area, unusedSegments: [] });
 				}
 			} else {
 				// Couldn't close the chain - release segments back
-				chain.forEach(seg => {
+				chain.forEach((seg) => {
 					// Find and unmark the segment
 					for (let i = 0; i < segments.length; i++) {
 						if (segments[i].entity === seg.entity && used.has(i)) {
@@ -738,7 +1164,11 @@ export default function DXFViewer3D({
 		if (results.length > 0) {
 			results[results.length - 1].unusedSegments = unusedEntities;
 		} else {
-			results.push({ shape: new THREE.Shape(), area: 0, unusedSegments: unusedEntities });
+			results.push({
+				shape: new THREE.Shape(),
+				area: 0,
+				unusedSegments: unusedEntities,
+			});
 		}
 
 		return results;
@@ -754,12 +1184,12 @@ export default function DXFViewer3D({
 					new THREE.Vector3(
 						entity.vertices[0].x,
 						entity.vertices[0].y,
-						entity.vertices[0].z || 0
+						entity.vertices[0].z || 0,
 					),
 					new THREE.Vector3(
 						entity.vertices[1].x,
 						entity.vertices[1].y,
-						entity.vertices[1].z || 0
+						entity.vertices[1].z || 0,
 					),
 				];
 				if (hasThickness) {
@@ -772,7 +1202,7 @@ export default function DXFViewer3D({
 			case 'POLYLINE': {
 				if (!entity.vertices || entity.vertices.length < 2) return null;
 				const points = entity.vertices.map(
-					(v: any) => new THREE.Vector3(v.x, v.y, v.z || 0)
+					(v: any) => new THREE.Vector3(v.x, v.y, v.z || 0),
 				);
 
 				// Close the polyline if shape is closed
@@ -795,8 +1225,8 @@ export default function DXFViewer3D({
 						new THREE.Vector3(
 							entity.center.x + entity.radius * Math.cos(theta),
 							entity.center.y + entity.radius * Math.sin(theta),
-							cz
-						)
+							cz,
+						),
 					);
 				}
 				if (hasThickness) {
@@ -820,7 +1250,10 @@ export default function DXFViewer3D({
 				}
 
 				const points: THREE.Vector3[] = [];
-				const segments = Math.max(32, Math.ceil((sweep / Math.PI) * 32));
+				const segments = Math.max(
+					32,
+					Math.ceil((sweep / Math.PI) * 32),
+				);
 
 				for (let i = 0; i <= segments; i++) {
 					const t = i / segments;
@@ -829,8 +1262,8 @@ export default function DXFViewer3D({
 						new THREE.Vector3(
 							cx + r * Math.cos(angle),
 							cy + r * Math.sin(angle),
-							cz
-						)
+							cz,
+						),
 					);
 				}
 				if (hasThickness) {
@@ -843,12 +1276,12 @@ export default function DXFViewer3D({
 				if (!entity.center || !entity.majorAxisEndPoint) return null;
 				const majorRadius = Math.sqrt(
 					entity.majorAxisEndPoint.x ** 2 +
-						entity.majorAxisEndPoint.y ** 2
+						entity.majorAxisEndPoint.y ** 2,
 				);
 				const minorRadius = majorRadius * entity.axisRatio;
 				const rotation = Math.atan2(
 					entity.majorAxisEndPoint.y,
-					entity.majorAxisEndPoint.x
+					entity.majorAxisEndPoint.x,
 				);
 				const startAngle = entity.startAngle || 0;
 				const endAngle = entity.endAngle || Math.PI * 2;
@@ -861,11 +1294,11 @@ export default function DXFViewer3D({
 					startAngle,
 					endAngle,
 					false,
-					rotation
+					rotation,
 				);
 				const curvePoints = curve.getPoints(64);
 				const points = curvePoints.map(
-					(p) => new THREE.Vector3(p.x, p.y, entity.center.z || 0)
+					(p) => new THREE.Vector3(p.x, p.y, entity.center.z || 0),
 				);
 				if (hasThickness) {
 					return createThickLines(points, color);
@@ -876,11 +1309,36 @@ export default function DXFViewer3D({
 			case 'SPLINE': {
 				if (!entity.controlPoints || entity.controlPoints.length < 2)
 					return null;
-				const splinePoints = entity.controlPoints.map(
-					(p: any) => new THREE.Vector3(p.x, p.y, p.z || 0)
-				);
-				const curve = new THREE.CatmullRomCurve3(splinePoints);
-				const points = curve.getPoints(entity.controlPoints.length * 10);
+				let points: THREE.Vector3[];
+				if (
+					entity.knotValues &&
+					entity.knotValues.length > 0 &&
+					entity.degreeOfSplineCurve
+				) {
+					const cp = entity.controlPoints.map((p: any) => ({
+						x: p.x,
+						y: p.y,
+						z: p.z || 0,
+					}));
+					const evaluated = evaluateBSplineCurve(
+						entity.degreeOfSplineCurve,
+						cp,
+						entity.knotValues,
+					);
+					points = evaluated.map(
+						(p) => new THREE.Vector3(p.x, p.y, p.z),
+					);
+				} else if (entity.fitPoints && entity.fitPoints.length >= 2) {
+					const fitPts = entity.fitPoints.map(
+						(p: any) => new THREE.Vector3(p.x, p.y, p.z || 0),
+					);
+					const curve = new THREE.CatmullRomCurve3(fitPts);
+					points = curve.getPoints(entity.fitPoints.length * 10);
+				} else {
+					points = entity.controlPoints.map(
+						(p: any) => new THREE.Vector3(p.x, p.y, p.z || 0),
+					);
+				}
 				if (hasThickness) {
 					return createThickLines(points, color);
 				}
@@ -897,8 +1355,8 @@ export default function DXFViewer3D({
 							entity.position.y,
 							entity.position.z || 0,
 						],
-						3
-					)
+						3,
+					),
 				);
 				const pointMaterial = new THREE.PointsMaterial({
 					color: color,
@@ -933,7 +1391,7 @@ export default function DXFViewer3D({
 	};
 
 	const handleFileSelect = async (
-		event: React.ChangeEvent<HTMLInputElement>
+		event: React.ChangeEvent<HTMLInputElement>,
 	) => {
 		const file = event.target.files?.[0];
 		if (!file || !sceneRef.current) return;
@@ -1051,7 +1509,7 @@ export default function DXFViewer3D({
 			{validationErrors.length > 0 && !error && (
 				<div className='p-4 bg-yellow-50 border border-yellow-200 rounded-md'>
 					<h4 className='font-semibold text-yellow-800 mb-2'>
-						Validation Warnings
+						Advertencias de validación
 					</h4>
 					<ul className='list-disc list-inside text-yellow-700 space-y-1'>
 						{validationErrors.map((err, idx) => (
@@ -1065,7 +1523,7 @@ export default function DXFViewer3D({
 
 			{isLoading && (
 				<div className='p-4 bg-blue-50 border border-blue-200 rounded-md text-blue-700'>
-					Loading DXF file...
+					Cargando archivo DXF...
 				</div>
 			)}
 

@@ -19,6 +19,8 @@ export interface QuotingFile {
 	_blobUrl?: string; // Blob URL for preview before S3 upload
 	_validationStatus?: 'pending' | 'valid' | 'invalid'; // DXF validation status
 	_validationErrors?: string[]; // Validation error messages
+	_parsedDxf?: any; // Cached parsed DXF object to avoid double-parsing
+	_piercings?: { singleClosed: number; assembledPaths: number; total: number };
 }
 
 export interface QuotingMaterial {

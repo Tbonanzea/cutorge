@@ -23,6 +23,13 @@ export default function MaterialSelectionPage() {
 	// Validate step whenever cart items change
 	useEffect(() => {
 		validateCurrentStep();
+
+		cart.items.forEach((item) => {
+			const p = item.file._piercings;
+			console.log(
+				`[Step 2] File "${item.file.filename}" — singleClosed: ${p?.singleClosed ?? 'N/A'}, assembledPaths: ${p?.assembledPaths ?? 'N/A'}, totalPiercings: ${p?.total ?? 'N/A'}`
+			);
+		});
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [cart.items]);
 

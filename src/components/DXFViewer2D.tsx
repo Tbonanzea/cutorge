@@ -5,7 +5,8 @@ import * as THREE from 'three';
 import { OrbitControls, Line2, LineGeometry, LineMaterial } from 'three-stdlib';
 import { validateDXF } from '@/lib/dxf-validation';
 import { createCustomGrid, createPackageBoundary } from '@/lib/three-grid';
-import { computeTotalDXFArea } from '@/lib/dxf-area';
+import { computeTotalDXFArea, getClosedShapeFromEntity } from '@/lib/dxf-area';
+import { evaluateBSplineCurve } from '@/lib/bspline';
 
 interface DXFViewer2DProps {
 	dxfUrl?: string;
@@ -13,6 +14,7 @@ interface DXFViewer2DProps {
 	showControls?: boolean; // Whether to show file upload and control buttons
 	maxPackageWidth?: number; // Maximum package width in cm
 	maxPackageHeight?: number; // Maximum package height in cm
+	parsedDxf?: any; // Pre-parsed DXF object (bypasses fetch + parse)
 }
 
 const LINE_WIDTH = 2; // Line width in pixels
@@ -23,6 +25,7 @@ export default function DXFViewer2D({
 	showControls = true,
 	maxPackageWidth,
 	maxPackageHeight,
+	parsedDxf,
 }: DXFViewer2DProps) {
 	const containerRef = useRef<HTMLDivElement>(null);
 	const sceneRef = useRef<THREE.Scene | null>(null);
@@ -172,11 +175,27 @@ export default function DXFViewer2D({
 	}, []);
 
 	useEffect(() => {
-		if (dxfUrl && sceneRef.current) {
-			loadDXFFromPath(dxfUrl);
+		if (sceneRef.current) {
+			if (parsedDxf) {
+				// Use pre-parsed DXF directly
+				setIsLoading(true);
+				setError(null);
+				setValidationErrors([]);
+				renderParsedDXF(parsedDxf)
+					.catch((err) => {
+						console.error('Error rendering parsed DXF:', err);
+						setError('Error rendering DXF: ' + (err as Error).message);
+					})
+					.finally(() => {
+						setIsLoading(false);
+					});
+			} else if (dxfUrl) {
+				// Fallback: load from URL
+				loadDXFFromPath(dxfUrl);
+			}
 		}
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [dxfUrl, maxPackageWidth, maxPackageHeight]);
+	}, [dxfUrl, parsedDxf, maxPackageWidth, maxPackageHeight]);
 
 	const fitCameraToObject = useCallback((object: THREE.Group, pieceBounds?: { width: number; height: number }) => {
 		if (!cameraRef.current || !controlsRef.current || !containerRef.current)
@@ -197,21 +216,9 @@ export default function DXFViewer2D({
 		const height = containerRef.current.clientHeight || 600;
 		const aspect = width / height;
 
-		// If package boundary exists, include it in the zoom calculation
-		let viewWidth = size.x;
-		let viewHeight = size.y;
-
-		if (maxPackageWidth && maxPackageHeight) {
-			// Convert cm to mm
-			const packageWidthMm = maxPackageWidth * 10;
-			const packageHeightMm = maxPackageHeight * 10;
-			viewWidth = Math.max(viewWidth, packageWidthMm);
-			viewHeight = Math.max(viewHeight, packageHeightMm);
-		}
-
-		// Calculate zoom to fit the object with padding
-		const maxDim = Math.max(viewWidth, viewHeight / aspect);
-		const padding = 1.2;
+		// Zoom based on piece dimensions only (ignore package boundary)
+		const maxDim = Math.max(size.x, size.y / aspect);
+		const padding = 1.80;
 		const zoom = 200 / (maxDim * padding);
 
 		cameraRef.current.zoom = Math.max(0.1, Math.min(zoom, 50));
@@ -248,6 +255,35 @@ export default function DXFViewer2D({
 		}
 	};
 
+	// Render pre-parsed DXF (bypasses fetch + parse)
+	const renderParsedDXF = async (dxf: any) => {
+		if (!sceneRef.current) return;
+
+		try {
+			console.log('Rendering pre-parsed DXF:', dxf);
+
+			if (!dxf) {
+				throw new Error('Invalid DXF object');
+			}
+
+			// Validate the DXF file - this blocks on errors
+			const validationResult = validateDXF(dxf);
+			if (!validationResult.isValid) {
+				setValidationErrors(validationResult.errors);
+				const errorMessage = validationResult.errors.join('\n• ');
+				throw new Error(`Invalid DXF file:\n• ${errorMessage}`);
+			}
+
+			setValidationErrors([]);
+
+			// Continue with rendering (same as parseDXF below)
+			await renderDXFToScene(dxf);
+		} catch (err) {
+			console.error('Error rendering parsed DXF:', err);
+			throw err;
+		}
+	};
+
 	const parseDXF = async (dxfString: string) => {
 		if (!sceneRef.current) return;
 
@@ -272,6 +308,17 @@ export default function DXFViewer2D({
 
 			setValidationErrors([]);
 
+			await renderDXFToScene(dxf);
+		} catch (err) {
+			console.error('Error parsing DXF:', err);
+			throw err;
+		}
+	};
+
+	// Extract rendering logic into separate function
+	const renderDXFToScene = async (dxf: any) => {
+		if (!sceneRef.current) return;
+
 			// Dispose previous object and its resources
 			if (dxfObjectRef.current) {
 				disposeObject(dxfObjectRef.current);
@@ -283,6 +330,18 @@ export default function DXFViewer2D({
 
 			// Parse entities
 			if (dxf.entities && Array.isArray(dxf.entities)) {
+				// Log closed entities analysis
+				let closedCount = 0;
+				const closedByType: Record<string, number> = {};
+				dxf.entities.forEach((entity: any) => {
+					const closed = getClosedShapeFromEntity(entity);
+					if (closed) {
+						closedCount++;
+						closedByType[entity.type] = (closedByType[entity.type] || 0) + 1;
+					}
+				});
+				console.log(`[DXF2D] Total entities: ${dxf.entities.length} | Closed entities: ${closedCount}`, closedByType);
+
 				dxf.entities.forEach((entity: any) => {
 					try {
 						const mesh = createEntityMesh(entity);
@@ -336,10 +395,21 @@ export default function DXFViewer2D({
 			sceneRef.current.add(customGrid);
 
 			// Create package boundary if dimensions are provided
+			// Auto-align: swap package dimensions so its longest side matches the piece's longest side
 			if (maxPackageWidth && maxPackageHeight) {
+				let pkgW = maxPackageWidth * 10; // Convert cm to mm
+				let pkgH = maxPackageHeight * 10;
+
+				const pieceIsWiderThanTall = pieceBounds.width >= pieceBounds.height;
+				const packageIsWiderThanTall = pkgW >= pkgH;
+
+				if (pieceIsWiderThanTall !== packageIsWiderThanTall) {
+					[pkgW, pkgH] = [pkgH, pkgW];
+				}
+
 				const boundary = createPackageBoundary({
-					width: maxPackageWidth * 10, // Convert cm to mm
-					height: maxPackageHeight * 10,
+					width: pkgW,
+					height: pkgH,
 					resolution: resolutionRef.current,
 				});
 				boundaryRef.current = boundary;
@@ -350,19 +420,15 @@ export default function DXFViewer2D({
 			sceneRef.current.add(group);
 			setEntityCount(renderedCount);
 
-			// Compute total area of closed shapes
+			// Compute total area using contour chaining
 			if (dxf.entities) {
-				const totalArea = computeTotalDXFArea(dxf.entities);
+				const totalArea = computeTotalDXFArea(dxf.entities, dxf.blocks);
 				setArea(totalArea > 0 ? totalArea : null);
 			}
 
 			fitCameraToObject(group, pieceBounds);
 
 			console.log('DXF rendered with', renderedCount, 'entities');
-		} catch (err) {
-			console.error('Error parsing DXF:', err);
-			throw err;
-		}
 	};
 
 	// Properly dispose Three.js objects to prevent memory leaks
@@ -529,11 +595,22 @@ export default function DXFViewer2D({
 			case 'SPLINE': {
 				if (!entity.controlPoints || entity.controlPoints.length < 2)
 					return null;
-				const splinePoints = entity.controlPoints.map(
-					(p: any) => new THREE.Vector3(p.x, p.y, p.z || 0)
-				);
-				const curve = new THREE.CatmullRomCurve3(splinePoints);
-				const points = curve.getPoints(entity.controlPoints.length * 10);
+				if (entity.knotValues && entity.knotValues.length > 0 && entity.degreeOfSplineCurve) {
+					// Proper B-spline evaluation using De Boor algorithm
+					const cp = entity.controlPoints.map((p: any) => ({ x: p.x, y: p.y, z: p.z || 0 }));
+					const evaluated = evaluateBSplineCurve(entity.degreeOfSplineCurve, cp, entity.knotValues);
+					const points = evaluated.map((p) => new THREE.Vector3(p.x, p.y, p.z));
+					return createLine2FromPoints(points, color);
+				}
+				if (entity.fitPoints && entity.fitPoints.length >= 2) {
+					// Fit points: CatmullRom is correct interpolation
+					const fitPts = entity.fitPoints.map((p: any) => new THREE.Vector3(p.x, p.y, p.z || 0));
+					const curve = new THREE.CatmullRomCurve3(fitPts);
+					const points = curve.getPoints(entity.fitPoints.length * 10);
+					return createLine2FromPoints(points, color);
+				}
+				// Fallback: connect control points directly
+				const points = entity.controlPoints.map((p: any) => new THREE.Vector3(p.x, p.y, p.z || 0));
 				return createLine2FromPoints(points, color);
 			}
 
@@ -697,7 +774,7 @@ export default function DXFViewer2D({
 			{validationErrors.length > 0 && !error && (
 				<div className='p-4 bg-yellow-50 border border-yellow-200 rounded-md'>
 					<h4 className='font-semibold text-yellow-800 mb-2'>
-						Validation Warnings
+						Advertencias de validación
 					</h4>
 					<ul className='list-disc list-inside text-yellow-700 space-y-1'>
 						{validationErrors.map((err, idx) => (
@@ -711,7 +788,7 @@ export default function DXFViewer2D({
 
 			{isLoading && (
 				<div className='p-4 bg-blue-50 border border-blue-200 rounded-md text-blue-700'>
-					Loading DXF file...
+					Cargando archivo DXF...
 				</div>
 			)}
 
