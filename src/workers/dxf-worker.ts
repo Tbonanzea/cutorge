@@ -5,7 +5,7 @@
 
 import DxfParser from 'dxf-parser';
 import { validateDXF } from '@/lib/dxf-validation';
-import { computeTotalPiercings } from '@/lib/dxf-area';
+import { computeTotalPiercings, validateDXFGeometry } from '@/lib/dxf-area';
 import type {
 	WorkerRequest,
 	ParseDxfSuccess,
@@ -36,8 +36,20 @@ self.onmessage = (event: MessageEvent<WorkerRequest>) => {
 				return;
 			}
 
-			// Validate parsed DXF
+			// Validate parsed DXF (structural)
 			const validation = validateDXF(parsed);
+
+			// Run geometric validations (hole sizes, floating pieces)
+			const geometricValidation = validateDXFGeometry(
+				parsed.entities || [],
+				parsed.blocks
+			);
+
+			// Merge geometric errors into structural validation result
+			if (geometricValidation.errors.length > 0) {
+				validation.errors.push(...geometricValidation.errors);
+				validation.isValid = false;
+			}
 
 			// Compute piercings breakdown (single closed entities + assembled paths)
 			const piercings = computeTotalPiercings(

@@ -794,7 +794,7 @@ export default function DXFViewer2D({
 			{validationErrors.length > 0 && !error && (
 				<div className='p-4 bg-yellow-50 border border-yellow-200 rounded-md'>
 					<h4 className='font-semibold text-yellow-800 mb-2'>
-						Validation Warnings
+						Advertencias de validación
 					</h4>
 					<ul className='list-disc list-inside text-yellow-700 space-y-1'>
 						{validationErrors.map((err, idx) => (
@@ -808,7 +808,7 @@ export default function DXFViewer2D({
 
 			{isLoading && (
 				<div className='p-4 bg-blue-50 border border-blue-200 rounded-md text-blue-700'>
-					Loading DXF file...
+					Cargando archivo DXF...
 				</div>
 			)}
 

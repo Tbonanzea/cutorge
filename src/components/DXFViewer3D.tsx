@@ -447,7 +447,7 @@ export default function DXFViewer3D({
 
 						// Build the outer shape with depth-1 holes
 						const outerShape = shapeData[0].shape;
-						const outerIsAssembled = shapeData[0].isAssembled;
+						const _outerIsAssembled = shapeData[0].isAssembled;
 						for (let i = 1; i < shapeData.length; i++) {
 							if (depths[i] !== 1) continue; // Only direct holes
 							const holePoints = shapeData[i].pts;
@@ -470,7 +470,7 @@ export default function DXFViewer3D({
 						for (let i = 1; i < shapeData.length; i++) {
 							if (depths[i] < 2 || depths[i] % 2 !== 0) continue; // Even depth = material
 							const islandShape = shapeData[i].shape;
-							const islandIsAssembled = shapeData[i].isAssembled;
+							const _islandIsAssembled = shapeData[i].isAssembled;
 							// Add any depth+1 shapes inside this island as holes
 							for (let j = 0; j < shapeData.length; j++) {
 								if (j === i || depths[j] !== depths[i] + 1) continue;
@@ -1295,7 +1295,7 @@ export default function DXFViewer3D({
 			{validationErrors.length > 0 && !error && (
 				<div className='p-4 bg-yellow-50 border border-yellow-200 rounded-md'>
 					<h4 className='font-semibold text-yellow-800 mb-2'>
-						Validation Warnings
+						Advertencias de validación
 					</h4>
 					<ul className='list-disc list-inside text-yellow-700 space-y-1'>
 						{validationErrors.map((err, idx) => (
@@ -1309,7 +1309,7 @@ export default function DXFViewer3D({
 
 			{isLoading && (
 				<div className='p-4 bg-blue-50 border border-blue-200 rounded-md text-blue-700'>
-					Loading DXF file...
+					Cargando archivo DXF...
 				</div>
 			)}
 

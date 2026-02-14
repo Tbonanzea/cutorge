@@ -33,11 +33,20 @@ function signedArea(points: { x: number; y: number }[]): number {
  * Try to extract a closed THREE.Shape and its area from a DXF entity.
  * Only handles inherently closed entities: CIRCLE, full ARC, closed LWPOLYLINE/POLYLINE, full ELLIPSE.
  */
-export function getClosedShapeFromEntity(entity: any): { shape: THREE.Shape; area: number } | null {
+export function getClosedShapeFromEntity(
+	entity: any,
+): { shape: THREE.Shape; area: number } | null {
 	switch (entity.type) {
 		case 'CIRCLE': {
 			const shape = new THREE.Shape();
-			shape.absarc(entity.center.x, entity.center.y, entity.radius, 0, Math.PI * 2, false);
+			shape.absarc(
+				entity.center.x,
+				entity.center.y,
+				entity.radius,
+				0,
+				Math.PI * 2,
+				false,
+			);
 			return { shape, area: Math.PI * entity.radius * entity.radius };
 		}
 		case 'ARC': {
@@ -47,12 +56,20 @@ export function getClosedShapeFromEntity(entity: any): { shape: THREE.Shape; are
 			if (sweep <= 0) sweep += 2 * Math.PI;
 			if (Math.abs(sweep - 2 * Math.PI) > 0.01) return null; // Not a full circle
 			const shape = new THREE.Shape();
-			shape.absarc(entity.center.x, entity.center.y, entity.radius, 0, Math.PI * 2, false);
+			shape.absarc(
+				entity.center.x,
+				entity.center.y,
+				entity.radius,
+				0,
+				Math.PI * 2,
+				false,
+			);
 			return { shape, area: Math.PI * entity.radius * entity.radius };
 		}
 		case 'LWPOLYLINE':
 		case 'POLYLINE': {
-			if (!entity.shape || !entity.vertices || entity.vertices.length < 3) return null;
+			if (!entity.shape || !entity.vertices || entity.vertices.length < 3)
+				return null;
 			const shape = new THREE.Shape();
 			shape.moveTo(entity.vertices[0].x, entity.vertices[0].y);
 			for (let i = 1; i < entity.vertices.length; i++) {
@@ -65,18 +82,30 @@ export function getClosedShapeFromEntity(entity: any): { shape: THREE.Shape; are
 			if (!entity.center || !entity.majorAxisEndPoint) return null;
 			const startAngle = entity.startAngle || 0;
 			const endAngle = entity.endAngle || Math.PI * 2;
-			const isFullEllipse = Math.abs(endAngle - startAngle - Math.PI * 2) < 0.01 ||
+			const isFullEllipse =
+				Math.abs(endAngle - startAngle - Math.PI * 2) < 0.01 ||
 				(startAngle === 0 && endAngle === 0);
 			if (!isFullEllipse) return null;
 
-			const majorRadius = Math.sqrt(entity.majorAxisEndPoint.x ** 2 + entity.majorAxisEndPoint.y ** 2);
+			const majorRadius = Math.sqrt(
+				entity.majorAxisEndPoint.x ** 2 +
+					entity.majorAxisEndPoint.y ** 2,
+			);
 			const minorRadius = majorRadius * entity.axisRatio;
-			const rotation = Math.atan2(entity.majorAxisEndPoint.y, entity.majorAxisEndPoint.x);
+			const rotation = Math.atan2(
+				entity.majorAxisEndPoint.y,
+				entity.majorAxisEndPoint.x,
+			);
 
 			const ellipseCurve = new THREE.EllipseCurve(
-				entity.center.x, entity.center.y,
-				majorRadius, minorRadius,
-				0, Math.PI * 2, false, rotation
+				entity.center.x,
+				entity.center.y,
+				majorRadius,
+				minorRadius,
+				0,
+				Math.PI * 2,
+				false,
+				rotation,
 			);
 			const curvePoints = ellipseCurve.getPoints(64);
 			const shape = new THREE.Shape();
@@ -88,14 +117,34 @@ export function getClosedShapeFromEntity(entity: any): { shape: THREE.Shape; are
 			return { shape, area: Math.PI * majorRadius * minorRadius };
 		}
 		case 'SPLINE': {
-			if (!entity.closed || !entity.controlPoints || entity.controlPoints.length < 3) return null;
+			if (
+				!entity.closed ||
+				!entity.controlPoints ||
+				entity.controlPoints.length < 3
+			)
+				return null;
 			let pts: { x: number; y: number }[];
-			if (entity.knotValues && entity.knotValues.length > 0 && entity.degreeOfSplineCurve) {
-				const cp = entity.controlPoints.map((p: any) => ({ x: p.x, y: p.y, z: p.z || 0 }));
-				const evaluated = evaluateBSplineCurve(entity.degreeOfSplineCurve, cp, entity.knotValues);
+			if (
+				entity.knotValues &&
+				entity.knotValues.length > 0 &&
+				entity.degreeOfSplineCurve
+			) {
+				const cp = entity.controlPoints.map((p: any) => ({
+					x: p.x,
+					y: p.y,
+					z: p.z || 0,
+				}));
+				const evaluated = evaluateBSplineCurve(
+					entity.degreeOfSplineCurve,
+					cp,
+					entity.knotValues,
+				);
 				pts = evaluated.map((p) => ({ x: p.x, y: p.y }));
 			} else {
-				pts = entity.controlPoints.map((p: any) => ({ x: p.x, y: p.y }));
+				pts = entity.controlPoints.map((p: any) => ({
+					x: p.x,
+					y: p.y,
+				}));
 			}
 			if (pts.length < 3) return null;
 			const shape = new THREE.Shape();
@@ -131,14 +180,20 @@ interface Segment {
  * Expand a bulge arc between two polyline vertices into intermediate points.
  * Bulge = tan(1/4 of the included angle). Positive bulge = CCW arc, negative = CW.
  */
-function expandBulge(v1: Point2D, v2: Point2D, bulge: number, numSegments: number = 16): Point2D[] {
+function expandBulge(
+	v1: Point2D,
+	v2: Point2D,
+	bulge: number,
+	numSegments: number = 16,
+): Point2D[] {
 	const dx = v2.x - v1.x;
 	const dy = v2.y - v1.y;
 	const chordLen = Math.sqrt(dx * dx + dy * dy);
 	if (chordLen < 1e-10) return [v1, v2];
 
-	const sagitta = Math.abs(bulge) * chordLen / 2;
-	const radius = (chordLen * chordLen / 4 + sagitta * sagitta) / (2 * sagitta);
+	const sagitta = (Math.abs(bulge) * chordLen) / 2;
+	const radius =
+		((chordLen * chordLen) / 4 + sagitta * sagitta) / (2 * sagitta);
 
 	// Midpoint of the chord
 	const mx = (v1.x + v2.x) / 2;
@@ -156,7 +211,7 @@ function expandBulge(v1: Point2D, v2: Point2D, bulge: number, numSegments: numbe
 
 	// Angles from center to v1 and v2
 	const startAngle = Math.atan2(v1.y - cy, v1.x - cx);
-	const endAngle = Math.atan2(v2.y - cy, v2.x - cx);
+	const _endAngle = Math.atan2(v2.y - cy, v2.x - cx);
 
 	// Included angle: bulge = tan(includedAngle / 4)
 	const includedAngle = 4 * Math.atan(Math.abs(bulge));
@@ -187,9 +242,20 @@ function entityToSegment(entity: any): Segment | null {
 	switch (entity.type) {
 		case 'LINE': {
 			if (!entity.vertices || entity.vertices.length < 2) return null;
-			const p0: Point2D = { x: entity.vertices[0].x, y: entity.vertices[0].y };
-			const p1: Point2D = { x: entity.vertices[1].x, y: entity.vertices[1].y };
-			return { points: [p0, p1], startPoint: p0, endPoint: p1, isClosed: false };
+			const p0: Point2D = {
+				x: entity.vertices[0].x,
+				y: entity.vertices[0].y,
+			};
+			const p1: Point2D = {
+				x: entity.vertices[1].x,
+				y: entity.vertices[1].y,
+			};
+			return {
+				points: [p0, p1],
+				startPoint: p0,
+				endPoint: p1,
+				isClosed: false,
+			};
 		}
 
 		case 'ARC': {
@@ -232,20 +298,37 @@ function entityToSegment(entity: any): Segment | null {
 					y: center.y + radius * Math.sin(angle),
 				});
 			}
-			return { points, startPoint: points[0], endPoint: points[points.length - 1], isClosed: true };
+			return {
+				points,
+				startPoint: points[0],
+				endPoint: points[points.length - 1],
+				isClosed: true,
+			};
 		}
 
 		case 'ELLIPSE': {
 			if (!entity.center || !entity.majorAxisEndPoint) return null;
-			const majorRadius = Math.sqrt(entity.majorAxisEndPoint.x ** 2 + entity.majorAxisEndPoint.y ** 2);
+			const majorRadius = Math.sqrt(
+				entity.majorAxisEndPoint.x ** 2 +
+					entity.majorAxisEndPoint.y ** 2,
+			);
 			const minorRadius = majorRadius * (entity.axisRatio ?? 1);
-			const rotation = Math.atan2(entity.majorAxisEndPoint.y, entity.majorAxisEndPoint.x);
+			const rotation = Math.atan2(
+				entity.majorAxisEndPoint.y,
+				entity.majorAxisEndPoint.x,
+			);
 
 			const sa = entity.startAngle ?? 0;
 			const ea = entity.endAngle ?? Math.PI * 2;
-			const isFull = Math.abs(ea - sa - Math.PI * 2) < 0.01 || (sa === 0 && ea === 0);
+			const isFull =
+				Math.abs(ea - sa - Math.PI * 2) < 0.01 ||
+				(sa === 0 && ea === 0);
 
-			const sweep = isFull ? Math.PI * 2 : (ea - sa > 0 ? ea - sa : ea - sa + Math.PI * 2);
+			const sweep = isFull
+				? Math.PI * 2
+				: ea - sa > 0
+					? ea - sa
+					: ea - sa + Math.PI * 2;
 			const numPts = isFull ? 64 : 32;
 			const points: Point2D[] = [];
 			for (let i = 0; i <= numPts; i++) {
@@ -254,8 +337,14 @@ function entityToSegment(entity: any): Segment | null {
 				const px = majorRadius * Math.cos(t);
 				const py = minorRadius * Math.sin(t);
 				points.push({
-					x: entity.center.x + px * Math.cos(rotation) - py * Math.sin(rotation),
-					y: entity.center.y + px * Math.sin(rotation) + py * Math.cos(rotation),
+					x:
+						entity.center.x +
+						px * Math.cos(rotation) -
+						py * Math.sin(rotation),
+					y:
+						entity.center.y +
+						px * Math.sin(rotation) +
+						py * Math.cos(rotation),
 				});
 			}
 			return {
@@ -284,7 +373,7 @@ function entityToSegment(entity: any): Segment | null {
 					const bulgePoints = expandBulge(
 						{ x: v.x, y: v.y },
 						{ x: vNext.x, y: vNext.y },
-						v.bulge
+						v.bulge,
 					);
 					// Skip first point if we already have points (avoid duplicate at junction)
 					const startIdx = points.length === 0 ? 0 : 1;
@@ -314,16 +403,32 @@ function entityToSegment(entity: any): Segment | null {
 		}
 
 		case 'SPLINE': {
-			if (!entity.controlPoints || entity.controlPoints.length < 2) return null;
+			if (!entity.controlPoints || entity.controlPoints.length < 2)
+				return null;
 			const isClosed = !!entity.closed;
 			let pts: Point2D[];
 
-			if (entity.knotValues && entity.knotValues.length > 0 && entity.degreeOfSplineCurve) {
-				const cp = entity.controlPoints.map((p: any) => ({ x: p.x, y: p.y, z: p.z || 0 }));
-				const evaluated = evaluateBSplineCurve(entity.degreeOfSplineCurve, cp, entity.knotValues);
+			if (
+				entity.knotValues &&
+				entity.knotValues.length > 0 &&
+				entity.degreeOfSplineCurve
+			) {
+				const cp = entity.controlPoints.map((p: any) => ({
+					x: p.x,
+					y: p.y,
+					z: p.z || 0,
+				}));
+				const evaluated = evaluateBSplineCurve(
+					entity.degreeOfSplineCurve,
+					cp,
+					entity.knotValues,
+				);
 				pts = evaluated.map((p) => ({ x: p.x, y: p.y }));
 			} else {
-				pts = entity.controlPoints.map((p: any) => ({ x: p.x, y: p.y }));
+				pts = entity.controlPoints.map((p: any) => ({
+					x: p.x,
+					y: p.y,
+				}));
 			}
 
 			if (pts.length < 2) return null;
@@ -355,10 +460,10 @@ function dist2D(a: Point2D, b: Point2D): number {
 
 /** Directed edge in the planar graph */
 interface DirectedEdge {
-	from: number;     // node index
-	to: number;       // node index
+	from: number; // node index
+	to: number; // node index
 	points: Point2D[]; // sampled points along this edge (from → to)
-	angle: number;     // outgoing angle from 'from' node
+	angle: number; // outgoing angle from 'from' node
 	visited: boolean;
 }
 
@@ -366,7 +471,10 @@ interface DirectedEdge {
  * Merge nearby points into unique nodes.
  * Returns mapping from original point index to node index.
  */
-function buildNodes(endpoints: Point2D[], tolerance: number): { nodes: Point2D[]; pointToNode: number[] } {
+function buildNodes(
+	endpoints: Point2D[],
+	tolerance: number,
+): { nodes: Point2D[]; pointToNode: number[] } {
 	const nodes: Point2D[] = [];
 	const pointToNode: number[] = [];
 
@@ -400,7 +508,10 @@ function outgoingAngle(from: Point2D, to: Point2D): number {
  * Build a planar graph from segments and extract all faces using face traversal.
  * Returns arrays of points representing closed contours (faces of the graph).
  */
-function extractFaces(segments: Segment[], tolerance: number = 0.5): Point2D[][] {
+function extractFaces(
+	segments: Segment[],
+	tolerance: number = 0.5,
+): Point2D[][] {
 	// Convert closed segments into two open halves so they participate in the
 	// planar graph.  This ensures holes (circles, closed polylines) inside the
 	// outer boundary are correctly handled by face traversal.
@@ -428,7 +539,7 @@ function extractFaces(segments: Segment[], tolerance: number = 0.5): Point2D[][]
 		}
 	}
 
-	const openSegments = graphSegments.filter(s => !s.isClosed);
+	const openSegments = graphSegments.filter((s) => !s.isClosed);
 
 	if (openSegments.length === 0) return [];
 
@@ -445,7 +556,10 @@ function extractFaces(segments: Segment[], tolerance: number = 0.5): Point2D[][]
 	// Build directed edges (each segment creates two directed edges)
 	const edges: DirectedEdge[] = [];
 	// Map: nodeIndex → list of edge indices leaving this node
-	const nodeEdges: number[][] = Array.from({ length: nodes.length }, () => []);
+	const nodeEdges: number[][] = Array.from(
+		{ length: nodes.length },
+		() => [],
+	);
 
 	for (let i = 0; i < openSegments.length; i++) {
 		const seg = openSegments[i];
@@ -456,7 +570,10 @@ function extractFaces(segments: Segment[], tolerance: number = 0.5): Point2D[][]
 
 		// Use the second point for angle (more accurate for curves)
 		const fwdAnglePt = seg.points.length > 1 ? seg.points[1] : seg.endPoint;
-		const revAnglePt = seg.points.length > 1 ? seg.points[seg.points.length - 2] : seg.startPoint;
+		const revAnglePt =
+			seg.points.length > 1
+				? seg.points[seg.points.length - 2]
+				: seg.startPoint;
 
 		// Forward edge: from → to
 		const fwdIdx = edges.length;
@@ -495,7 +612,7 @@ function extractFaces(segments: Segment[], tolerance: number = 0.5): Point2D[][]
 	const nextInFace = new Array(edges.length).fill(-1);
 	for (let eIdx = 0; eIdx < edges.length; eIdx++) {
 		const twin = twinOf(eIdx); // twin is the reverse edge
-		const v = edges[eIdx].to;  // we arrive at node v
+		const v = edges[eIdx].to; // we arrive at node v
 
 		const edgesAtV = nodeEdges[v];
 		// Find the position of the twin (v→u) in the sorted edge list at v
@@ -608,7 +725,9 @@ export interface PiercingsResult {
  * Extract start/end endpoints from an open entity for greedy chaining.
  * Mirrors DXFViewer3D's getSegmentEndpoints logic.
  */
-function getChainableEndpoints(entity: any): { start: Point2D; end: Point2D } | null {
+function getChainableEndpoints(
+	entity: any,
+): { start: Point2D; end: Point2D } | null {
 	switch (entity.type) {
 		case 'LINE': {
 			if (!entity.vertices || entity.vertices.length < 2) return null;
@@ -630,11 +749,24 @@ function getChainableEndpoints(entity: any): { start: Point2D; end: Point2D } | 
 			};
 		}
 		case 'SPLINE': {
-			if (!entity.controlPoints || entity.controlPoints.length < 2) return null;
+			if (!entity.controlPoints || entity.controlPoints.length < 2)
+				return null;
 			if (entity.closed) return null; // Closed splines handled by getClosedShapeFromEntity
-			if (entity.knotValues && entity.knotValues.length > 0 && entity.degreeOfSplineCurve) {
-				const cp = entity.controlPoints.map((p: any) => ({ x: p.x, y: p.y, z: p.z || 0 }));
-				const evaluated = evaluateBSplineCurve(entity.degreeOfSplineCurve, cp, entity.knotValues);
+			if (
+				entity.knotValues &&
+				entity.knotValues.length > 0 &&
+				entity.degreeOfSplineCurve
+			) {
+				const cp = entity.controlPoints.map((p: any) => ({
+					x: p.x,
+					y: p.y,
+					z: p.z || 0,
+				}));
+				const evaluated = evaluateBSplineCurve(
+					entity.degreeOfSplineCurve,
+					cp,
+					entity.knotValues,
+				);
 				if (evaluated.length < 2) return null;
 				const first = evaluated[0];
 				const last = evaluated[evaluated.length - 1];
@@ -670,7 +802,9 @@ function getChainableEndpoints(entity: any): { start: Point2D; end: Point2D } | 
  * Count assembled closed paths using greedy endpoint chaining.
  * Mirrors DXFViewer3D's assembleClosedPaths algorithm.
  */
-function countAssembledClosedPaths(segments: { start: Point2D; end: Point2D }[]): number {
+function countAssembledClosedPaths(
+	segments: { start: Point2D; end: Point2D }[],
+): number {
 	const TOLERANCE = 0.5; // mm tolerance for endpoint matching (same as DXF3D)
 	const used = new Set<number>();
 	let count = 0;
@@ -687,7 +821,10 @@ function countAssembledClosedPaths(segments: { start: Point2D; end: Point2D }[])
 
 		for (let iter = 0; iter < segments.length; iter++) {
 			// Check if loop is closed
-			if (chainIndices.length > 1 && dist2D(currentEnd, chainStart) < TOLERANCE) {
+			if (
+				chainIndices.length > 1 &&
+				dist2D(currentEnd, chainStart) < TOLERANCE
+			) {
 				closed = true;
 				break;
 			}
@@ -732,7 +869,10 @@ function countAssembledClosedPaths(segments: { start: Point2D; end: Point2D }[])
 	return count;
 }
 
-export function computeTotalPiercings(entities: any[], blocks?: Record<string, any>): PiercingsResult {
+export function computeTotalPiercings(
+	entities: any[],
+	blocks?: Record<string, any>,
+): PiercingsResult {
 	// Expand INSERT entities if blocks are provided
 	const expandedEntities = expandInserts(entities, blocks);
 
@@ -755,7 +895,11 @@ export function computeTotalPiercings(entities: any[], blocks?: Record<string, a
 	// Count assembled closed paths using greedy chaining (same algorithm as DXFViewer3D)
 	const assembledPaths = countAssembledClosedPaths(chainableSegments);
 
-	return { singleClosed, assembledPaths, total: singleClosed + assembledPaths };
+	return {
+		singleClosed,
+		assembledPaths,
+		total: singleClosed + assembledPaths,
+	};
 }
 
 /**
@@ -766,7 +910,10 @@ export function computeTotalPiercings(entities: any[], blocks?: Record<string, a
  * @param entities - Array of DXF entities
  * @param blocks - Optional blocks object for expanding INSERT entities
  */
-export function computeTotalDXFArea(entities: any[], blocks?: Record<string, any>): number {
+export function computeTotalDXFArea(
+	entities: any[],
+	blocks?: Record<string, any>,
+): number {
 	// Expand INSERT entities if blocks are provided
 	const expandedEntities = expandInserts(entities, blocks);
 
@@ -805,4 +952,395 @@ export function computeTotalDXFArea(entities: any[], blocks?: Record<string, any
 
 	// Prefer the largest positive (CCW) area. If none found, fall back to absolute.
 	return maxPositiveArea > 0 ? maxPositiveArea : maxAbsArea;
+}
+
+// ---------------------------------------------------------------------------
+// Geometric DXF Validations
+// ---------------------------------------------------------------------------
+
+export interface GeometricValidationResult {
+	isValid: boolean;
+	errors: string[];
+}
+
+/**
+ * Point-in-polygon test using ray casting algorithm.
+ * Casts a ray in the +X direction from the point and counts crossings.
+ */
+function pointInPolygon(point: Point2D, polygon: Point2D[]): boolean {
+	let inside = false;
+	const n = polygon.length;
+	for (let i = 0, j = n - 1; i < n; j = i++) {
+		const yi = polygon[i].y;
+		const yj = polygon[j].y;
+		if (yi > point.y !== yj > point.y) {
+			const xIntersect =
+				polygon[j].x +
+				((point.y - yj) / (yi - yj)) * (polygon[i].x - polygon[j].x);
+			if (point.x < xIntersect) {
+				inside = !inside;
+			}
+		}
+	}
+	return inside;
+}
+
+/**
+ * Compute the bounding box of a set of 2D points.
+ */
+function boundingBox(points: Point2D[]): {
+	minX: number;
+	minY: number;
+	maxX: number;
+	maxY: number;
+	width: number;
+	height: number;
+} {
+	let minX = Infinity,
+		minY = Infinity,
+		maxX = -Infinity,
+		maxY = -Infinity;
+	for (const p of points) {
+		if (p.x < minX) minX = p.x;
+		if (p.y < minY) minY = p.y;
+		if (p.x > maxX) maxX = p.x;
+		if (p.y > maxY) maxY = p.y;
+	}
+	return { minX, minY, maxX, maxY, width: maxX - minX, height: maxY - minY };
+}
+
+/**
+ * Represents a closed contour extracted from DXF entities.
+ */
+interface ClosedContour {
+	points: Point2D[];
+	area: number;
+}
+
+/**
+ * Extract all closed contours from expanded DXF entities.
+ * This includes inherently closed entities (circles, closed polylines, etc.)
+ * and assembled closed paths from chained open segments.
+ */
+function extractAllClosedContours(expandedEntities: any[]): ClosedContour[] {
+	const contours: ClosedContour[] = [];
+	const chainableSegments: {
+		entity: any;
+		endpoints: { start: Point2D; end: Point2D };
+	}[] = [];
+
+	for (const entity of expandedEntities) {
+		// Try to get inherently closed shape
+		const seg = entityToSegment(entity);
+		if (!seg) continue;
+
+		if (seg.isClosed && seg.points.length >= 3) {
+			contours.push({
+				points: seg.points,
+				area: computeArea(seg.points),
+			});
+		} else {
+			const endpoints = getChainableEndpoints(entity);
+			if (endpoints) {
+				chainableSegments.push({ entity, endpoints });
+			}
+		}
+	}
+
+	// Also assemble closed paths from chained open segments
+	const TOLERANCE = 0.5;
+	const used = new Set<number>();
+
+	for (let startIdx = 0; startIdx < chainableSegments.length; startIdx++) {
+		if (used.has(startIdx)) continue;
+
+		const chainIndices: number[] = [startIdx];
+		used.add(startIdx);
+
+		const chainStart = chainableSegments[startIdx].endpoints.start;
+		let currentEnd = chainableSegments[startIdx].endpoints.end;
+		let closed = false;
+
+		for (let iter = 0; iter < chainableSegments.length; iter++) {
+			if (
+				chainIndices.length > 1 &&
+				dist2D(currentEnd, chainStart) < TOLERANCE
+			) {
+				closed = true;
+				break;
+			}
+
+			let found = false;
+			for (let i = 0; i < chainableSegments.length; i++) {
+				if (used.has(i)) continue;
+
+				if (
+					dist2D(chainableSegments[i].endpoints.start, currentEnd) <
+					TOLERANCE
+				) {
+					chainIndices.push(i);
+					used.add(i);
+					currentEnd = chainableSegments[i].endpoints.end;
+					found = true;
+					break;
+				}
+
+				if (
+					dist2D(chainableSegments[i].endpoints.end, currentEnd) <
+					TOLERANCE
+				) {
+					chainIndices.push(i);
+					used.add(i);
+					currentEnd = chainableSegments[i].endpoints.start;
+					found = true;
+					break;
+				}
+			}
+
+			if (!found) break;
+		}
+
+		if (closed && chainIndices.length >= 2) {
+			// Collect all points from the chained segments
+			const chainPoints: Point2D[] = [];
+			for (const idx of chainIndices) {
+				const seg = entityToSegment(chainableSegments[idx].entity);
+				if (seg) {
+					// Skip first point if we already have points (avoid duplication at junctions)
+					const startP = chainPoints.length === 0 ? 0 : 1;
+					for (let p = startP; p < seg.points.length; p++) {
+						chainPoints.push(seg.points[p]);
+					}
+				}
+			}
+			if (chainPoints.length >= 3) {
+				contours.push({
+					points: chainPoints,
+					area: computeArea(chainPoints),
+				});
+			}
+		} else {
+			for (const idx of chainIndices) {
+				used.delete(idx);
+			}
+		}
+	}
+
+	return contours;
+}
+
+/**
+ * Validate that no holes are smaller than a minimum diameter (default 3mm).
+ * For CIRCLE entities: checks if diameter < minDiameter.
+ * For other closed shapes: checks if the minimum bounding dimension < minDiameter.
+ */
+function validateHoleSizes(
+	expandedEntities: any[],
+	minDiameter: number = 3,
+): string[] {
+	const errors: string[] = [];
+
+	for (const entity of expandedEntities) {
+		if (entity.type === 'CIRCLE') {
+			const diameter = entity.radius * 2;
+			if (diameter < minDiameter) {
+				errors.push(
+					`Se detectó un orificio de ${diameter.toFixed(2)}mm. El diámetro mínimo permitido es de ${minDiameter}mm.`,
+				);
+			}
+			continue;
+		}
+
+		// For other closed shapes, check bounding box
+		const seg = entityToSegment(entity);
+		if (!seg || !seg.isClosed || seg.points.length < 3) continue;
+
+		const bbox = boundingBox(seg.points);
+		const minDim = Math.min(bbox.width, bbox.height);
+		if (minDim < minDiameter) {
+			errors.push(
+				`Se detectó un orificio de ${minDim.toFixed(2)}mm. El diámetro mínimo permitido es de ${minDiameter}mm.`,
+			);
+		}
+	}
+
+	return errors;
+}
+
+/**
+ * Validate that there are no floating pieces (holes inside other holes).
+ * A floating piece occurs when a closed contour is entirely inside another
+ * closed contour that is itself inside the outer boundary.
+ *
+ * Logic:
+ * 1. Extract all closed contours and sort by area (largest first)
+ * 2. The largest contour is the outer boundary
+ * 3. All other contours are "holes" in the outer boundary
+ * 4. For each hole, check if any other hole is entirely contained within it
+ * 5. If so, that inner contour creates a floating piece
+ */
+function validateNoFloatingPieces(expandedEntities: any[]): string[] {
+	const errors: string[] = [];
+
+	const contours = extractAllClosedContours(expandedEntities);
+	if (contours.length < 3) return errors; // Need at least outer + 2 holes for a floating piece
+
+	// Sort by area descending - the largest is the outer boundary
+	contours.sort((a, b) => b.area - a.area);
+
+	// The outer boundary is the first (largest area) contour
+	// All remaining contours are interior holes
+	const holes = contours.slice(1);
+
+	// For each pair of holes, check if one contains the other.
+	// If hole B is inside hole A, then the region of hole B creates a floating piece.
+	for (let i = 0; i < holes.length; i++) {
+		for (let j = i + 1; j < holes.length; j++) {
+			// Check if the smaller hole (j, since sorted by area desc) is inside the larger hole (i)
+			const larger = holes[i];
+			const smaller = holes[j];
+
+			// Test if a point of the smaller contour is inside the larger contour
+			// Use multiple test points for robustness
+			const testPoint = smaller.points[0];
+			if (pointInPolygon(testPoint, larger.points)) {
+				errors.push(
+					'Se detectó una pieza flotante (orificio dentro de otro orificio). Esto no es posible de cortar.',
+				);
+				// Only report the error once; no need to keep checking this pair
+				return errors;
+			}
+		}
+	}
+
+	return errors;
+}
+
+/**
+ * Validate that all entities can be resolved into closed paths.
+ * Open entities (like unclosed polylines, splines, arcs, lines) must be
+ * chainable into closed contours, otherwise they cannot be cut.
+ *
+ * Logic:
+ * 1. Separate inherently closed entities from open entities
+ * 2. Try to chain open entities using the greedy endpoint-chaining algorithm
+ * 3. If any open entities remain unchained, they form invalid open contours
+ */
+function validateNoOpenEntities(expandedEntities: any[]): string[] {
+	const errors: string[] = [];
+	const TOLERANCE = 0.5; // mm tolerance for endpoint matching (same as countAssembledClosedPaths)
+
+	// Separate inherently closed entities from open entities
+	const chainableSegments: { start: Point2D; end: Point2D }[] = [];
+
+	for (const entity of expandedEntities) {
+		// Check if this entity is inherently closed
+		const seg = entityToSegment(entity);
+		if (!seg) continue;
+
+		if (seg.isClosed) {
+			// Inherently closed entities are valid, skip them
+			continue;
+		}
+
+		// Open entity - must be chainable into a closed path
+		const endpoints = getChainableEndpoints(entity);
+		if (endpoints) {
+			chainableSegments.push(endpoints);
+		}
+	}
+
+	// If no open entities, validation passes
+	if (chainableSegments.length === 0) return errors;
+
+	// Try to chain all open entities into closed paths using greedy algorithm
+	const used = new Set<number>();
+
+	for (let startIdx = 0; startIdx < chainableSegments.length; startIdx++) {
+		if (used.has(startIdx)) continue;
+
+		const chainIndices: number[] = [startIdx];
+		used.add(startIdx);
+
+		const chainStart = chainableSegments[startIdx].start;
+		let currentEnd = chainableSegments[startIdx].end;
+		let closed = false;
+
+		for (let iter = 0; iter < chainableSegments.length; iter++) {
+			// Check if loop is closed
+			if (
+				chainIndices.length > 1 &&
+				dist2D(currentEnd, chainStart) < TOLERANCE
+			) {
+				closed = true;
+				break;
+			}
+
+			// Find next matching segment
+			let found = false;
+			for (let i = 0; i < chainableSegments.length; i++) {
+				if (used.has(i)) continue;
+
+				// Try normal direction: segment.start matches currentEnd
+				if (
+					dist2D(chainableSegments[i].start, currentEnd) < TOLERANCE
+				) {
+					chainIndices.push(i);
+					used.add(i);
+					currentEnd = chainableSegments[i].end;
+					found = true;
+					break;
+				}
+
+				// Try reversed: segment.end matches currentEnd
+				if (dist2D(chainableSegments[i].end, currentEnd) < TOLERANCE) {
+					chainIndices.push(i);
+					used.add(i);
+					currentEnd = chainableSegments[i].start;
+					found = true;
+					break;
+				}
+			}
+
+			if (!found) break;
+		}
+
+		if (!closed) {
+			// Couldn't close the chain - release segments back so they'll be detected as unchained
+			for (const idx of chainIndices) {
+				used.delete(idx);
+			}
+		}
+	}
+
+	// If any open entities remain unchained, report an error
+	const unchainedCount = chainableSegments.length - used.size;
+	if (unchainedCount > 0) {
+		errors.push(
+			'Se detectaron entidades abiertas que no forman un contorno cerrado. Todas las formas deben estar completamente cerradas para poder cortar. Revisa que no existan lineas duplicadas o polilíneas abiertas sin cerrar.',
+		);
+	}
+
+	return errors;
+}
+
+/**
+ * Run all geometric DXF validations.
+ * Returns a combined result with all errors found.
+ */
+export function validateDXFGeometry(
+	entities: any[],
+	blocks?: Record<string, any>,
+): GeometricValidationResult {
+	const expandedEntities = expandInserts(entities, blocks);
+	const errors: string[] = [];
+
+	errors.push(...validateHoleSizes(expandedEntities));
+	errors.push(...validateNoFloatingPieces(expandedEntities));
+	errors.push(...validateNoOpenEntities(expandedEntities));
+
+	return {
+		isValid: errors.length === 0,
+		errors,
+	};
 }

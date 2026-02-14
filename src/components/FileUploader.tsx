@@ -49,12 +49,6 @@ function FileUploader() {
 
 	const [uploadProgress, setUploadProgress] = useState<number>(0);
 	const [isUploading, setIsUploading] = useState(false);
-	const [uploadStatus, setUploadStatus] = useState<
-		'idle' | 'success' | 'error'
-	>('idle');
-	const [uploadErrors, setUploadErrors] = useState<
-		{ fileName: string; error: string }[]
-	>([]);
 
 	const onDropAccepted = useCallback(
 		async (acceptedFiles: File[]) => {
@@ -68,8 +62,6 @@ function FileUploader() {
 
 			setIsUploading(true);
 			setUploadProgress(0);
-			setUploadStatus('idle');
-			setUploadErrors([]);
 
 			const filesToProcess = acceptedFiles.slice(0, remainingSlots);
 
@@ -193,34 +185,21 @@ function FileUploader() {
 				processed++;
 			}
 
-			setUploadErrors(newErrors);
-			setUploadStatus(newErrors.length > 0 ? 'error' : 'success');
 			setIsUploading(false);
 
-			if (newErrors.length > 0) {
-				for (const err of newErrors) {
-					toast.error(err.fileName ? `${err.fileName}: ${err.error}` : err.error);
-				}
-			}
-
-			// Only mark step as complete if we have at least one VALID file
-			markStep('file-upload', validFilesCount > 0);
+			// Mark step as complete only if ALL files are valid (no invalid files)
+			const totalItems = cart.items.length + filesToProcess.length;
+			const invalidCount = newErrors.filter(e => e.fileName).length;
+			markStep('file-upload', validFilesCount > 0 && invalidCount === 0 && validFilesCount === totalItems);
 		},
 		[addItem, cart.items, markStep, parseDxf]
 	);
 
 	const onDropRejected = useCallback((fileRejections: FileRejection[]) => {
-		const rejections = fileRejections.flatMap((rejection) =>
-			rejection.errors.map((error) => ({
-				fileName: rejection.file.name,
-				error: error.message,
-			}))
-		);
-		setUploadErrors(rejections);
-		setUploadStatus('error');
-
-		for (const rejection of rejections) {
-			toast.error(`${rejection.fileName}: ${rejection.error}`);
+		for (const rejection of fileRejections) {
+			for (const error of rejection.errors) {
+				toast.error(`${rejection.file.name}: ${error.message}`);
+			}
 		}
 	}, []);
 
@@ -256,10 +235,10 @@ function FileUploader() {
 
 		// Re-evaluate step validity after removal
 		const remainingItems = cart.items.filter((_, i) => i !== index);
-		const hasValidFiles = remainingItems.some(
+		const allValid = remainingItems.length > 0 && remainingItems.every(
 			(item) => item.file._validationStatus === 'valid'
 		);
-		markStep('file-upload', hasValidFiles);
+		markStep('file-upload', allValid);
 	};
 
 	// Note: We intentionally don't cleanup blob URLs on unmount because
@@ -436,110 +415,43 @@ function FileUploader() {
 					</div>
 				)}
 
-				{/* Errores de subida */}
-				{uploadErrors.length > 0 && (
-					<div className='mt-6'>
-						<h4 className='font-medium mb-3 flex items-center text-destructive'>
-							<AlertCircle className='h-4 w-4 mr-2' />
-							Errores durante la subida
-						</h4>
-						<div className='space-y-2'>
-							{uploadErrors.map((error, index) => (
-								<div
-									key={`upload-error-${index}`}
-									className='p-3 border rounded-md bg-destructive/10 border-destructive/30'
-								>
-									<div className='flex items-start'>
-										<AlertCircle className='h-5 w-5 mr-3 text-destructive flex-shrink-0' />
-										<div>
-											<p className='font-medium'>
-												{error.fileName}
-											</p>
-											<p className='text-sm text-destructive mt-1'>
-												{error.error}
-											</p>
-										</div>
-									</div>
-								</div>
-							))}
-						</div>
-					</div>
-				)}
+				{/* Resumen de validación */}
+				{cart.items.length > 0 && !isUploading && (() => {
+					const validCount = cart.items.filter(
+						(item) => item.file._validationStatus === 'valid'
+					).length;
+					const invalidCount = cart.items.filter(
+						(item) => item.file._validationStatus === 'invalid'
+					).length;
 
-				{/* Estado de resultado */}
-				{uploadStatus !== 'idle' && !isUploading && (
-					<div className='mt-6'>
-						<div
-							className={`flex items-center p-4 rounded-md ${
-								uploadStatus === 'error'
-									? 'bg-destructive/10 text-destructive'
-									: 'bg-green-100 text-green-700'
-							}`}
-						>
-							{uploadStatus === 'error' ? (
-								<AlertCircle className='h-6 w-6 mr-3' />
-							) : (
-								<CheckCircle2 className='h-6 w-6 mr-3' />
-							)}
-							<div>
-								<p className='font-medium'>
-									{uploadStatus === 'error'
-										? 'Error en la subida'
-										: '¡Subida completada!'}
-								</p>
-								<p className='text-sm'>
-									{uploadStatus === 'error'
-										? 'Algunos archivos no pudieron subirse'
-										: 'Todos los archivos se subieron correctamente'}
-								</p>
-							</div>
-						</div>
-					</div>
-				)}
-
-				{/* Validation Summary */}
-				{cart.items.length > 0 && !isUploading && (
-					<div className='mt-6 p-4 bg-slate-100 rounded-md border border-slate-200'>
-						<h4 className='font-medium mb-2'>Resumen de validación</h4>
-						<div className='flex items-center justify-between text-sm'>
+					return (
+						<div className={`mt-6 flex items-center justify-between p-3 rounded-md border text-sm ${
+							invalidCount > 0
+								? 'bg-red-50 border-red-200'
+								: 'bg-green-50 border-green-200'
+						}`}>
 							<div className='flex items-center gap-4'>
-								<div className='flex items-center gap-2'>
-									<CheckCircle2 className='h-4 w-4 text-success' />
-									<span>
-										{
-											cart.items.filter(
-												(item) =>
-													item.file._validationStatus ===
-													'valid'
-											).length
-										}{' '}
-										válidos
-									</span>
-								</div>
-								<div className='flex items-center gap-2'>
-									<AlertCircle className='h-4 w-4 text-destructive' />
-									<span>
-										{
-											cart.items.filter(
-												(item) =>
-													item.file._validationStatus ===
-													'invalid'
-											).length
-										}{' '}
-										inválidos
-									</span>
-								</div>
+								{validCount > 0 && (
+									<div className='flex items-center gap-1.5'>
+										<CheckCircle2 className='h-4 w-4 text-green-600' />
+										<span className='text-green-700'>{validCount} {validCount === 1 ? 'válido' : 'válidos'}</span>
+									</div>
+								)}
+								{invalidCount > 0 && (
+									<div className='flex items-center gap-1.5'>
+										<AlertCircle className='h-4 w-4 text-red-600' />
+										<span className='text-red-700'>{invalidCount} {invalidCount === 1 ? 'inválido' : 'inválidos'}</span>
+									</div>
+								)}
 							</div>
-							{cart.items.some(
-								(item) => item.file._validationStatus === 'invalid'
-							) && (
-								<p className='text-xs text-destructive font-medium'>
-									Elimina los archivos inválidos para continuar
-								</p>
+							{invalidCount > 0 && (
+								<span className='text-xs text-red-600 font-medium'>
+									Eliminá los archivos inválidos para continuar
+								</span>
 							)}
 						</div>
-					</div>
-				)}
+					);
+				})()}
 			</CardContent>
 		</Card>
 	);
