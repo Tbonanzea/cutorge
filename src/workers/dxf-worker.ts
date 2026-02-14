@@ -1,0 +1,69 @@
+/**
+ * DXF Parser Web Worker
+ * Offloads DXF parsing and validation to prevent main thread blocking
+ */
+
+import DxfParser from 'dxf-parser';
+import { validateDXF } from '@/lib/dxf-validation';
+import type {
+	WorkerRequest,
+	ParseDxfSuccess,
+	ParseDxfError,
+} from '@/lib/dxf-worker-types';
+
+// Worker message handler
+self.onmessage = (event: MessageEvent<WorkerRequest>) => {
+	const { type, payload } = event.data;
+
+	if (type === 'PARSE_DXF') {
+		const { dxfString, requestId } = payload;
+
+		try {
+			// Parse DXF in worker thread
+			const parser = new DxfParser();
+			const parsed = parser.parseSync(dxfString);
+
+			if (!parsed) {
+				const errorResponse: ParseDxfError = {
+					type: 'PARSE_DXF_ERROR',
+					payload: {
+						requestId,
+						error: 'Failed to parse DXF file',
+					},
+				};
+				self.postMessage(errorResponse);
+				return;
+			}
+
+			// Validate parsed DXF
+			const validation = validateDXF(parsed);
+
+			// Send success response back to main thread
+			const successResponse: ParseDxfSuccess = {
+				type: 'PARSE_DXF_SUCCESS',
+				payload: {
+					requestId,
+					parsed,
+					validation,
+				},
+			};
+			self.postMessage(successResponse);
+		} catch (err) {
+			// Send error response back to main thread
+			const errorResponse: ParseDxfError = {
+				type: 'PARSE_DXF_ERROR',
+				payload: {
+					requestId,
+					error:
+						err instanceof Error
+							? err.message
+							: 'Unknown error during DXF parsing',
+				},
+			};
+			self.postMessage(errorResponse);
+		}
+	}
+};
+
+// Export empty object to make TypeScript happy
+export {};

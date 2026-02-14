@@ -14,6 +14,7 @@ interface DXFViewer3DProps {
 	thickness?: number; // Material thickness in mm for 3D extrusion visualization
 	maxPackageWidth?: number; // Maximum package width in cm
 	maxPackageHeight?: number; // Maximum package height in cm
+	parsedDxf?: any; // Pre-parsed DXF object (bypasses fetch + parse)
 }
 
 const LINE_WIDTH = 2; // Line width in pixels
@@ -25,6 +26,7 @@ export default function DXFViewer3D({
 	thickness,
 	maxPackageWidth,
 	maxPackageHeight,
+	parsedDxf,
 }: DXFViewer3DProps) {
 	const containerRef = useRef<HTMLDivElement>(null);
 	const sceneRef = useRef<THREE.Scene | null>(null);
@@ -169,11 +171,27 @@ export default function DXFViewer3D({
 	}, []);
 
 	useEffect(() => {
-		if (dxfUrl && sceneRef.current) {
-			loadDXFFromPath(dxfUrl);
+		if (sceneRef.current) {
+			if (parsedDxf) {
+				// Use pre-parsed DXF directly
+				setIsLoading(true);
+				setError(null);
+				setValidationErrors([]);
+				renderParsedDXF(parsedDxf)
+					.catch((err) => {
+						console.error('Error rendering parsed DXF:', err);
+						setError('Error rendering DXF: ' + (err as Error).message);
+					})
+					.finally(() => {
+						setIsLoading(false);
+					});
+			} else if (dxfUrl) {
+				// Fallback: load from URL
+				loadDXFFromPath(dxfUrl);
+			}
 		}
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [dxfUrl, thickness, maxPackageWidth, maxPackageHeight]);
+	}, [dxfUrl, parsedDxf, thickness, maxPackageWidth, maxPackageHeight]);
 
 	const fitCameraToObject = useCallback((object: THREE.Group, pieceBounds?: { width: number; height: number }) => {
 		if (!cameraRef.current || !controlsRef.current || !containerRef.current)
@@ -247,6 +265,35 @@ export default function DXFViewer3D({
 		}
 	};
 
+	// Render pre-parsed DXF (bypasses fetch + parse)
+	const renderParsedDXF = async (dxf: any) => {
+		if (!sceneRef.current) return;
+
+		try {
+			console.log('Rendering pre-parsed DXF:', dxf);
+
+			if (!dxf) {
+				throw new Error('Invalid DXF object');
+			}
+
+			// Validate the DXF file - this blocks on errors
+			const validationResult = validateDXF(dxf);
+			if (!validationResult.isValid) {
+				setValidationErrors(validationResult.errors);
+				const errorMessage = validationResult.errors.join('\n• ');
+				throw new Error(`Invalid DXF file:\n• ${errorMessage}`);
+			}
+
+			setValidationErrors([]);
+
+			// Continue with rendering (same as parseDXF below)
+			await renderDXFToScene(dxf);
+		} catch (err) {
+			console.error('Error rendering parsed DXF:', err);
+			throw err;
+		}
+	};
+
 	const parseDXF = async (dxfString: string) => {
 		if (!sceneRef.current) return;
 
@@ -270,6 +317,17 @@ export default function DXFViewer3D({
 			}
 
 			setValidationErrors([]);
+
+			await renderDXFToScene(dxf);
+		} catch (err) {
+			console.error('Error parsing DXF:', err);
+			throw err;
+		}
+	};
+
+	// Extract rendering logic into separate function
+	const renderDXFToScene = async (dxf: any) => {
+		if (!sceneRef.current) return;
 
 			// Dispose previous object and its resources
 			if (dxfObjectRef.current) {
@@ -452,10 +510,6 @@ export default function DXFViewer3D({
 			fitCameraToObject(group, pieceBounds);
 
 			console.log('DXF rendered with', renderedCount, 'entities');
-		} catch (err) {
-			console.error('Error parsing DXF:', err);
-			throw err;
-		}
 	};
 
 	// Properly dispose Three.js objects to prevent memory leaks

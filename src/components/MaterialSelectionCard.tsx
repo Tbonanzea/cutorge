@@ -71,6 +71,7 @@ export default function MaterialSelectionCard({
 							thickness={item.materialType?.height}
 							maxPackageWidth={100}
 							maxPackageHeight={200}
+							parsedDxf={item.file._parsedDxf}
 						/>
 					</div>
 

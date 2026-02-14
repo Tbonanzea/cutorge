@@ -21,7 +21,7 @@ import {
 import { useCallback, useState, useRef } from 'react';
 import { FileRejection, useDropzone } from 'react-dropzone';
 import { toast } from 'sonner';
-import { validateDXFFile } from '@/lib/dxf-validation';
+import { useDxfWorker } from '@/hooks/useDxfWorker';
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 const MAX_FILES = 5;
@@ -40,6 +40,9 @@ function FileUploader() {
 		removeItem,
 		markStep,
 	} = useQuoting();
+
+	// Initialize DXF Worker
+	const { parseDxf, isReady: workerReady } = useDxfWorker();
 
 	// Track blob URLs for cleanup
 	const blobUrlsRef = useRef<Set<string>>(new Set());
@@ -101,18 +104,69 @@ function FileUploader() {
 				const blobUrl = URL.createObjectURL(file);
 				blobUrlsRef.current.add(blobUrl); // Track for cleanup
 
-				// Validate DXF file structure
-				const validationResult = await validateDXFFile(file);
+				// Read file contents
+				const text = await file.text();
 
-				setUploadProgress(
-					Math.round(((processed + 1) / filesToProcess.length) * 100)
-				);
+				// Parse and validate DXF file in Web Worker
+				try {
+					const { parsed, validation } = await parseDxf(text);
 
-				if (!validationResult.isValid) {
-					// File failed DXF validation
+					setUploadProgress(
+						Math.round(((processed + 1) / filesToProcess.length) * 100)
+					);
+
+					if (!validation.isValid) {
+						// File failed DXF validation
+						newErrors.push({
+							fileName: file.name,
+							error: `Archivo DXF inválido: ${validation.errors.join(', ')}`,
+						});
+
+						// Add to cart but mark as invalid (don't cache parsed data for invalid files)
+						const quotingFile = {
+							id: crypto.randomUUID(),
+							filename: file.name,
+							filepath: '',
+							filetype: 'DXF' as const,
+							_rawFile: file,
+							_blobUrl: blobUrl,
+							_validationStatus: 'invalid' as const,
+							_validationErrors: validation.errors,
+						};
+						addItem({
+							file: quotingFile,
+							material: null,
+							materialType: null,
+							quantity: 1,
+							price: 0,
+						});
+					} else {
+						// File passed validation - cache parsed DXF
+						validFilesCount++;
+						const quotingFile = {
+							id: crypto.randomUUID(),
+							filename: file.name,
+							filepath: '',
+							filetype: 'DXF' as const,
+							_rawFile: file,
+							_blobUrl: blobUrl,
+							_validationStatus: 'valid' as const,
+							_validationErrors: [],
+							_parsedDxf: parsed, // Cache parsed DXF to avoid re-parsing in viewers
+						};
+						addItem({
+							file: quotingFile,
+							material: null,
+							materialType: null,
+							quantity: 1,
+							price: 0,
+						});
+					}
+				} catch (err) {
+					// Worker parsing failed
 					newErrors.push({
 						fileName: file.name,
-						error: `Archivo DXF inválido: ${validationResult.errors.join(', ')}`,
+						error: `Error al procesar archivo: ${err instanceof Error ? err.message : 'Error desconocido'}`,
 					});
 
 					// Add to cart but mark as invalid
@@ -124,27 +178,7 @@ function FileUploader() {
 						_rawFile: file,
 						_blobUrl: blobUrl,
 						_validationStatus: 'invalid' as const,
-						_validationErrors: validationResult.errors,
-					};
-					addItem({
-						file: quotingFile,
-						material: null,
-						materialType: null,
-						quantity: 1,
-						price: 0,
-					});
-				} else {
-					// File passed validation
-					validFilesCount++;
-					const quotingFile = {
-						id: crypto.randomUUID(),
-						filename: file.name,
-						filepath: '',
-						filetype: 'DXF' as const,
-						_rawFile: file,
-						_blobUrl: blobUrl,
-						_validationStatus: 'valid' as const,
-						_validationErrors: [],
+						_validationErrors: [err instanceof Error ? err.message : 'Error desconocido'],
 					};
 					addItem({
 						file: quotingFile,
@@ -171,7 +205,7 @@ function FileUploader() {
 			// Only mark step as complete if we have at least one VALID file
 			markStep('file-upload', validFilesCount > 0);
 		},
-		[addItem, cart.items, markStep]
+		[addItem, cart.items, markStep, parseDxf]
 	);
 
 	const onDropRejected = useCallback((fileRejections: FileRejection[]) => {
@@ -207,7 +241,7 @@ function FileUploader() {
 						code: 'invalid-type',
 						message: 'Solo archivos .dxf permitidos.',
 				  },
-		disabled: isUploading,
+		disabled: isUploading || !workerReady,
 	});
 
 	const handleRemove = (index: number) => {
@@ -249,14 +283,16 @@ function FileUploader() {
 						isDragActive
 							? 'border-primary bg-primary/10'
 							: 'border-muted-foreground/30 hover:border-primary/50'
-					} ${isUploading ? 'opacity-70 pointer-events-none' : ''}`}
+					} ${isUploading || !workerReady ? 'opacity-70 pointer-events-none' : ''}`}
 				>
 					<input {...getInputProps()} />
 					<div className='flex flex-col items-center justify-center gap-4'>
 						<UploadCloud className='h-12 w-12 text-muted-foreground' />
 						<div>
 							<p className='font-medium'>
-								{isDragActive
+								{!workerReady
+									? 'Inicializando procesador de archivos...'
+									: isDragActive
 									? 'Suelta tu archivo aquí...'
 									: 'Arrastra y suelta tu archivo DXF aquí'}
 							</p>
@@ -266,7 +302,7 @@ function FileUploader() {
 								uno)
 							</p>
 						</div>
-						<Button variant='outline' className='mt-2'>
+						<Button variant='outline' className='mt-2' disabled={!workerReady}>
 							Seleccionar archivos
 						</Button>
 					</div>
