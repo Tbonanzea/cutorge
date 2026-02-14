@@ -216,29 +216,9 @@ export default function DXFViewer2D({
 		const height = containerRef.current.clientHeight || 600;
 		const aspect = width / height;
 
-		// If package boundary exists, include it in the zoom calculation
-		let viewWidth = size.x;
-		let viewHeight = size.y;
-
-		if (maxPackageWidth && maxPackageHeight) {
-			// Convert cm to mm and auto-align with piece orientation
-			let packageWidthMm = maxPackageWidth * 10;
-			let packageHeightMm = maxPackageHeight * 10;
-
-			const pieceIsWiderThanTall = size.x >= size.y;
-			const packageIsWiderThanTall = packageWidthMm >= packageHeightMm;
-
-			if (pieceIsWiderThanTall !== packageIsWiderThanTall) {
-				[packageWidthMm, packageHeightMm] = [packageHeightMm, packageWidthMm];
-			}
-
-			viewWidth = Math.max(viewWidth, packageWidthMm);
-			viewHeight = Math.max(viewHeight, packageHeightMm);
-		}
-
-		// Calculate zoom to fit the object with padding
-		const maxDim = Math.max(viewWidth, viewHeight / aspect);
-		const padding = 1.2;
+		// Zoom based on piece dimensions only (ignore package boundary)
+		const maxDim = Math.max(size.x, size.y / aspect);
+		const padding = 1.80;
 		const zoom = 200 / (maxDim * padding);
 
 		cameraRef.current.zoom = Math.max(0.1, Math.min(zoom, 50));

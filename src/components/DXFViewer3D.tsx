@@ -210,30 +210,10 @@ export default function DXFViewer3D({
 			depth: Math.abs(size.z),
 		});
 
-		// If package boundary exists, include it in the zoom calculation
-		let viewWidth = size.x;
-		let viewHeight = size.y;
-
-		if (maxPackageWidth && maxPackageHeight) {
-			// Convert cm to mm and auto-align with piece orientation
-			let packageWidthMm = maxPackageWidth * 10;
-			let packageHeightMm = maxPackageHeight * 10;
-
-			const pieceIsWiderThanTall = size.x >= size.y;
-			const packageIsWiderThanTall = packageWidthMm >= packageHeightMm;
-
-			if (pieceIsWiderThanTall !== packageIsWiderThanTall) {
-				[packageWidthMm, packageHeightMm] = [packageHeightMm, packageWidthMm];
-			}
-
-			viewWidth = Math.max(viewWidth, packageWidthMm);
-			viewHeight = Math.max(viewHeight, packageHeightMm);
-		}
-
-		// Calculate the distance needed to fit the object in view
-		const maxDim = Math.max(viewWidth, viewHeight, size.z);
+		// Zoom based on piece dimensions only (ignore package boundary)
+		const maxDim = Math.max(size.x, size.y, size.z);
 		const fov = cameraRef.current.fov * (Math.PI / 180);
-		const distance = (maxDim / 2) / Math.tan(fov / 2) * 1.5; // 1.5 for padding
+		const distance = (maxDim / 2) / Math.tan(fov / 2) * 1.15; // tight fit
 
 		// Position camera at an angle for 3D view, targeting origin
 		const angle = Math.PI / 4; // 45 degrees
